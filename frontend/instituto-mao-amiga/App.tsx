@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import {FlatList, StyleSheet, Text, View} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 type Ponto = {
@@ -15,7 +15,24 @@ const pontoMock: Ponto[] = [
     dataHora: "2026-08-10T08:00:00Z",
     mercadoria: "Caixas de Papelão e Suprimentos"
   },
-  // ...outros itens
+  {
+    nome: "Centro de Distribuição - Rio",
+    endereco: "Av. Brasil, 12000 - Penha, Rio de Janeiro - RJ",
+    dataHora: "2026-08-10T11:45:00Z",
+    mercadoria: "Eletrodomésticos"
+  },
+  {
+    nome: "Filial Sul - Curitiba",
+    endereco: "Rua das Flores, 250 - Centro, Curitiba - PR",
+    dataHora: "2026-08-10T16:15:00Z",
+    mercadoria: "Vestuário e Calçados"
+  },
+  {
+    nome: "Terminal Carga - BH",
+    endereco: "Av. do Contorno, 4321 - Funcionários, Belo Horizonte - MG",
+    dataHora: "2026-08-11T09:30:00Z",
+    mercadoria: "Alimentos Não Perecíveis"
+  }
 ];
 
 function DetalhePonto({ ponto }: { ponto: Ponto }) {
@@ -24,18 +41,23 @@ function DetalhePonto({ ponto }: { ponto: Ponto }) {
   return (
       <View style={styles.card}>
         <Text style={styles.titulo}>{ponto.nome}</Text>
-        <Text style={styles.texto}>📍 {ponto.endereco}</Text>
-        <Text style={styles.texto}>📦 Mercadoria: {ponto.mercadoria}</Text>
-        <Text style={styles.data}>📅 {dataFormatada}</Text>
+        <Text style={styles.texto}> {ponto.endereco}</Text>
+        <Text style={styles.texto}> Mercadoria: {ponto.mercadoria}</Text>
+        <Text style={styles.data}> {dataFormatada}</Text>
       </View>
   );
 }
 
-export default function TelaDetalheProduto() {
+export default function TelaListaPontos() {
   return (
       <View style={styles.container}>
         <StatusBar style="auto" />
-        <DetalhePonto ponto={pontoMock[0]} />
+        <FlatList
+            data={pontoMock}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={({ item }) => <DetalhePonto ponto={item} />}
+            contentContainerStyle={{ paddingVertical: 16 }}
+        />
       </View>
   );
 }
