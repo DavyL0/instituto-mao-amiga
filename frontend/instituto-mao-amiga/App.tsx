@@ -5,6 +5,7 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
 import TelaListaPontos from './src/screens/TelaListaPontos';
 import TelaDetalhePonto from './src/screens/TelaDetalhePonto';
+import TelaFormularioDoacao from './src/screens/TelaFormularioDoacao';
 import {theme} from './src/theme/theme';
 
 const Stack = createNativeStackNavigator();
@@ -32,6 +33,11 @@ export default function App() {
               component={TelaDetalhePonto}
               options={{title: 'Detalhes do Ponto'}}
           />
+            <Stack.Screen
+                name="TelaFormularioDoacao"
+                component={TelaFormularioDoacao}
+                options={{title: 'Registrar Doação'}}
+            />
         </Stack.Navigator>
       </NavigationContainer>
   );
