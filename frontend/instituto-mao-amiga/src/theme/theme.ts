@@ -4,7 +4,7 @@ export const theme = {
         modalBackground: 'rgba(0, 0, 0, 0.75)',
         cardBackground: '#202024',
         cardBorder: '#29292e',
-        primary: '#00b37e',
+        primary: '#007aff',
         text: '#f1f1f1',
         textSecondary: '#c4c4cc',
         textMuted: '#8d8d99',
@@ -12,7 +12,7 @@ export const theme = {
         placeholder: '#7c7c8a',
         danger: '#f75a68',
         shadow: '#000',
-        iconSurface: 'rgba(0, 179, 126, 0.12)',
+        iconSurface: 'rgba(0, 122, 255, 0.12)',
     },
     fontSize: {
         xs: 12,

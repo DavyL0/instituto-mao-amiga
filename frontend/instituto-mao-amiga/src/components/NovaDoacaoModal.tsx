@@ -12,7 +12,6 @@ import {
     View
 } from "react-native";
 import {theme} from "../theme/theme";
-import MaterialDesignIcons from "@react-native-vector-icons/material-design-icons";
 import React, {useState} from "react";
 import {pontosMock} from "../mocks/pontosMock";
 
@@ -83,7 +82,7 @@ export function NovaDoacaoModal(
             onRequestClose={fechar}
         >
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.modalBackdrop}
             >
                 <Pressable
@@ -93,13 +92,6 @@ export function NovaDoacaoModal(
                 <View style={styles.modalCard}>
                     <View style={styles.modalHeader}>
                         <View style={styles.modalHeaderTitleGroup}>
-                            <View style={styles.modalHeaderIconContainer}>
-                                <MaterialDesignIcons
-                                    name="package-variant-closed-plus"
-                                    size={20}
-                                    color={theme.colors.primary}
-                                />
-                            </View>
                             <Text style={styles.modalTitle}>Registrar Nova Doação</Text>
                         </View>
                         <TouchableOpacity
@@ -107,7 +99,7 @@ export function NovaDoacaoModal(
                             style={styles.closeButton}
                             hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                         >
-                            <MaterialDesignIcons name="close" size={20} color={theme.colors.textMuted}/>
+                            <Text style={styles.closeButtonText}>✕</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -177,11 +169,6 @@ export function NovaDoacaoModal(
                                 >
                                     {pontoSelecionado ? pontoSelecionado.nome : 'Selecione um ponto'}
                                 </Text>
-                                <MaterialDesignIcons
-                                    name={dropdownAberto ? "chevron-up" : "chevron-down"}
-                                    size={20}
-                                    color={theme.colors.textMuted}
-                                />
                             </TouchableOpacity>
                             {erros.ponto ? <Text style={styles.errorText}>{erros.ponto}</Text> : null}
                             {dropdownAberto && (
@@ -213,13 +200,6 @@ export function NovaDoacaoModal(
                                                     >
                                                         {ponto.nome}
                                                     </Text>
-                                                    {selecionado && (
-                                                        <MaterialDesignIcons
-                                                            name="check"
-                                                            size={18}
-                                                            color={theme.colors.primary}
-                                                        />
-                                                    )}
                                                 </TouchableOpacity>
                                             )
                                         })}
@@ -242,7 +222,6 @@ export function NovaDoacaoModal(
                             onPress={salvar}
                             activeOpacity={0.8}
                         >
-                            <MaterialDesignIcons name="check" size={18} color={theme.colors.textWhite}/>
                             <Text style={styles.buttonSaveText}>Salvar</Text>
                         </TouchableOpacity>
                     </View>
@@ -286,15 +265,6 @@ const styles = StyleSheet.create({
     modalHeaderTitleGroup: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: theme.spacing.sm,
-    },
-    modalHeaderIconContainer: {
-        width: 32,
-        height: 32,
-        borderRadius: theme.borderRadius.lg,
-        backgroundColor: theme.colors.iconSurface,
-        alignItems: 'center',
-        justifyContent: 'center',
     },
     modalTitle: {
         color: theme.colors.text,
@@ -303,11 +273,17 @@ const styles = StyleSheet.create({
     },
     closeButton: {
         width: 32,
-        height: 32,
+        aspectRatio: 1,
         borderRadius: theme.borderRadius.lg,
         backgroundColor: theme.colors.cardBorder,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    closeButtonText: {
+        color: theme.colors.textMuted,
+        fontSize: theme.fontSize.lg,
+        fontWeight: 'bold',
+        textAlign: 'center',
     },
     formScrollContainer: {
         paddingTop: theme.spacing.lg,

@@ -1,6 +1,5 @@
 import React, {useMemo, useState} from 'react';
 import {FlatList, Pressable, StyleSheet, Text, TextInput} from 'react-native';
-import MaterialDesignIcons from "@react-native-vector-icons/material-design-icons";
 import {SafeAreaView} from "react-native-safe-area-context";
 import {pontosMock} from "../mocks/pontosMock";
 import {PontoItem} from "../components/PontoItem";
@@ -31,7 +30,7 @@ function TelaListaPontos({navigation}: any) {
                 style={styles.floatingButton}
                 onPress={() => setModalVisible(true)}
             >
-                <MaterialDesignIcons name='plus' color='white' size={32}/>
+                <Text style={styles.floatingButtonText}>+</Text>
             </Pressable>
             <FlatList
                 data={pontosFiltrados}
@@ -81,8 +80,8 @@ const styles = StyleSheet.create({
     },
     floatingButton: {
         backgroundColor: theme.colors.primary,
-        width: 60,
-        height: 60,
+        width: 44,
+        aspectRatio: 1,
         borderRadius: theme.borderRadius.xl,
         justifyContent: 'center',
         alignItems: 'center',
@@ -95,5 +94,11 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
         zIndex: 999,
+    },
+    floatingButtonText: {
+        color: theme.colors.textWhite,
+        fontSize: theme.fontSize['4xl'],
+        fontWeight: 'bold',
+        lineHeight: 32,
     },
 });
