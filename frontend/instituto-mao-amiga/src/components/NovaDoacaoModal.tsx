@@ -1,4 +1,4 @@
-import {Ponto} from "../types/produto";
+import {Doacao, Ponto} from "../types/produto";
 import {
     KeyboardAvoidingView,
     Modal,
@@ -19,7 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 type NovoPontoModalProps = {
     visible: boolean;
     onClose: () => void;
-    onSave: (ponto: Ponto) => void;
+    onSave: (doacao: Doacao) => void;
 };
 
 type ErrosForm = {
@@ -39,9 +39,6 @@ export function NovaDoacaoModal(
     const [erros, setErros] = useState<ErrosForm>({});
 
     useEffect(() => {
-
-        carregarFormulario()
-
         const dados = {
             nomeItem,
             qtdItem,
@@ -51,10 +48,16 @@ export function NovaDoacaoModal(
         AsyncStorage.setItem(
             STORAGE_KEY,
             JSON.stringify(dados)
-        ).catch((error: any) => {
+        ).catch((error) => {
             console.error('Erro ao salvar formulário:', error);
         });
     }, [nomeItem, qtdItem, pontoSelecionado]);
+
+    useEffect(() => {
+        if (visible) {
+            carregarFormulario();
+        }
+    }, [visible]);
 
     async function carregarFormulario() {
         try {
@@ -69,23 +72,6 @@ export function NovaDoacaoModal(
             }
         } catch (error) {
             console.error('Erro ao carregar formulário:', error);
-        }
-    }
-
-    async function salvarFormulario() {
-        try {
-            const dados = {
-                nomeItem,
-                qtdItem,
-                pontoSelecionado
-            };
-
-            await AsyncStorage.setItem(
-                STORAGE_KEY,
-                JSON.stringify(dados)
-            );
-        } catch (error) {
-            console.error('Erro ao salvar formulário:', error);
         }
     }
 
@@ -124,6 +110,15 @@ export function NovaDoacaoModal(
 
     async function salvar() {
         if (!validar()) return;
+
+        const novaDoacao: Doacao = {
+            nomeItem,
+            qtdItem,
+            pontoSelecionado: pontoSelecionado!
+        };
+
+        onSave(novaDoacao);
+
         await AsyncStorage.removeItem(STORAGE_KEY);
 
         fechar();
@@ -175,9 +170,6 @@ export function NovaDoacaoModal(
                                 value={nomeItem}
                                 onChangeText={(text: React.SetStateAction<string>) => {
                                     setNomeItem(text);
-
-                                    salvarFormulario();
-
                                     if (erros.nomeItem) {
                                         setErros((prev) => ({
                                             ...prev,
@@ -199,9 +191,6 @@ export function NovaDoacaoModal(
                                 value={qtdItem}
                                 onChangeText={(text) => {
                                     setQtdItem(text);
-
-                                    salvarFormulario();
-
                                     if (!text) {
                                         setErros(prev => ({
                                             ...prev,
@@ -259,9 +248,6 @@ export function NovaDoacaoModal(
                                                     onPress={() => {
                                                         setPontoSelecionado(ponto);
                                                         setDropdownAberto(false);
-
-                                                        salvarFormulario();
-
                                                         if (erros.ponto) {
                                                             setErros(prev => ({
                                                                 ...prev,
