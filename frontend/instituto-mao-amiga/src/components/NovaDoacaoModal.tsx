@@ -12,8 +12,9 @@ import {
     View
 } from "react-native";
 import {theme} from "../theme/theme";
-import React, {useState} from "react";
+import React, { useEffect, useState } from "react";
 import {pontosMock} from "../mocks/pontosMock";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type NovoPontoModalProps = {
     visible: boolean;
@@ -30,11 +31,63 @@ type ErrosForm = {
 export function NovaDoacaoModal(
     {visible, onClose, onSave}: NovoPontoModalProps
 ) {
+    const STORAGE_KEY = '@comprebem:nova_doacao';
     const [nomeItem, setNomeItem] = useState('')
     const [qtdItem, setQtdItem] = useState('')
     const [pontoSelecionado, setPontoSelecionado] = useState<Ponto | null>(null)
     const [dropdownAberto, setDropdownAberto] = useState(false);
     const [erros, setErros] = useState<ErrosForm>({});
+
+    useEffect(() => {
+
+        carregarFormulario()
+
+        const dados = {
+            nomeItem,
+            qtdItem,
+            pontoSelecionado
+        };
+
+        AsyncStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(dados)
+        ).catch((error: any) => {
+            console.error('Erro ao salvar formulário:', error);
+        });
+    }, [nomeItem, qtdItem, pontoSelecionado]);
+
+    async function carregarFormulario() {
+        try {
+            const dadosSalvos = await AsyncStorage.getItem(STORAGE_KEY);
+
+            if (dadosSalvos) {
+                const dados = JSON.parse(dadosSalvos);
+
+                setNomeItem(dados.nomeItem ?? '');
+                setQtdItem(dados.qtdItem ?? '');
+                setPontoSelecionado(dados.pontoSelecionado ?? null);
+            }
+        } catch (error) {
+            console.error('Erro ao carregar formulário:', error);
+        }
+    }
+
+    async function salvarFormulario() {
+        try {
+            const dados = {
+                nomeItem,
+                qtdItem,
+                pontoSelecionado
+            };
+
+            await AsyncStorage.setItem(
+                STORAGE_KEY,
+                JSON.stringify(dados)
+            );
+        } catch (error) {
+            console.error('Erro ao salvar formulário:', error);
+        }
+    }
 
     function limparFormulario() {
         setNomeItem('')
@@ -69,9 +122,11 @@ export function NovaDoacaoModal(
         return Object.keys(novosErros).length === 0;
     }
 
-    function salvar() {
-        if (!validar()) return
-        fechar()
+    async function salvar() {
+        if (!validar()) return;
+        await AsyncStorage.removeItem(STORAGE_KEY);
+
+        fechar();
     }
 
     return (
@@ -118,9 +173,17 @@ export function NovaDoacaoModal(
                                 placeholder="Blusa de Frio"
                                 placeholderTextColor={theme.colors.placeholder}
                                 value={nomeItem}
-                                onChangeText={(text) => {
-                                    setNomeItem(text)
-                                    if (erros.nomeItem) setErros((prev) => ({...prev, nomeItem: undefined}));
+                                onChangeText={(text: React.SetStateAction<string>) => {
+                                    setNomeItem(text);
+
+                                    salvarFormulario();
+
+                                    if (erros.nomeItem) {
+                                        setErros((prev) => ({
+                                            ...prev,
+                                            nomeItem: undefined
+                                        }));
+                                    }
                                 }}
                             />
                             {erros.nomeItem ? <Text style={styles.errorText}>{erros.nomeItem}</Text> : null}
@@ -136,17 +199,27 @@ export function NovaDoacaoModal(
                                 value={qtdItem}
                                 onChangeText={(text) => {
                                     setQtdItem(text);
+
+                                    salvarFormulario();
+
                                     if (!text) {
-                                        setErros(prev => ({...prev, qtdItem: undefined}));
+                                        setErros(prev => ({
+                                            ...prev,
+                                            qtdItem: undefined
+                                        }));
                                     } else if (!/^\d+$/.test(text)) {
                                         setErros(prev => ({
                                             ...prev,
                                             qtdItem: 'Apenas números inteiros positivos são permitidos.'
                                         }));
                                     } else {
-                                        setErros(prev => ({...prev, qtdItem: undefined}));
+                                        setErros(prev => ({
+                                            ...prev,
+                                            qtdItem: undefined
+                                        }));
                                     }
-                                }}
+                                }
+                            }
                             />
                             {erros.qtdItem ? <Text style={styles.errorText}>{erros.qtdItem}</Text> : null}
                         </View>
@@ -186,10 +259,15 @@ export function NovaDoacaoModal(
                                                     onPress={() => {
                                                         setPontoSelecionado(ponto);
                                                         setDropdownAberto(false);
-                                                        if (erros.ponto) setErros(prev => ({
-                                                            ...prev,
-                                                            ponto: undefined
-                                                        }));
+
+                                                        salvarFormulario();
+
+                                                        if (erros.ponto) {
+                                                            setErros(prev => ({
+                                                                ...prev,
+                                                                ponto: undefined
+                                                            }));
+                                                        }
                                                     }}
                                                 >
                                                     <Text
