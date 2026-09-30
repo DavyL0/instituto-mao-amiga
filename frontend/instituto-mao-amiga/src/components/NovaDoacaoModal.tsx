@@ -1,4 +1,4 @@
-import {Ponto} from "../types/produto";
+import {Doacao, Ponto} from "../types/produto";
 import {
     KeyboardAvoidingView,
     Modal,
@@ -12,14 +12,14 @@ import {
     View
 } from "react-native";
 import {theme} from "../theme/theme";
-import MaterialDesignIcons from "@react-native-vector-icons/material-design-icons";
-import React, {useState} from "react";
+import React, { useEffect, useState } from "react";
 import {pontosMock} from "../mocks/pontosMock";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type NovoPontoModalProps = {
     visible: boolean;
     onClose: () => void;
-    onSave: (ponto: Ponto) => void;
+    onSave: (doacao: Doacao) => void;
 };
 
 type ErrosForm = {
@@ -31,11 +31,49 @@ type ErrosForm = {
 export function NovaDoacaoModal(
     {visible, onClose, onSave}: NovoPontoModalProps
 ) {
+    const STORAGE_KEY = '@comprebem:nova_doacao';
     const [nomeItem, setNomeItem] = useState('')
     const [qtdItem, setQtdItem] = useState('')
     const [pontoSelecionado, setPontoSelecionado] = useState<Ponto | null>(null)
     const [dropdownAberto, setDropdownAberto] = useState(false);
     const [erros, setErros] = useState<ErrosForm>({});
+
+    useEffect(() => {
+        const dados = {
+            nomeItem,
+            qtdItem,
+            pontoSelecionado
+        };
+
+        AsyncStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(dados)
+        ).catch((error) => {
+            console.error('Erro ao salvar formulário:', error);
+        });
+    }, [nomeItem, qtdItem, pontoSelecionado]);
+
+    useEffect(() => {
+        if (visible) {
+            carregarFormulario();
+        }
+    }, [visible]);
+
+    async function carregarFormulario() {
+        try {
+            const dadosSalvos = await AsyncStorage.getItem(STORAGE_KEY);
+
+            if (dadosSalvos) {
+                const dados = JSON.parse(dadosSalvos);
+
+                setNomeItem(dados.nomeItem ?? '');
+                setQtdItem(dados.qtdItem ?? '');
+                setPontoSelecionado(dados.pontoSelecionado ?? null);
+            }
+        } catch (error) {
+            console.error('Erro ao carregar formulário:', error);
+        }
+    }
 
     function limparFormulario() {
         setNomeItem('')
@@ -70,9 +108,20 @@ export function NovaDoacaoModal(
         return Object.keys(novosErros).length === 0;
     }
 
-    function salvar() {
-        if (!validar()) return
-        fechar()
+    async function salvar() {
+        if (!validar()) return;
+
+        const novaDoacao: Doacao = {
+            nomeItem,
+            qtdItem,
+            pontoSelecionado: pontoSelecionado!
+        };
+
+        onSave(novaDoacao);
+
+        await AsyncStorage.removeItem(STORAGE_KEY);
+
+        fechar();
     }
 
     return (
@@ -83,7 +132,7 @@ export function NovaDoacaoModal(
             onRequestClose={fechar}
         >
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.modalBackdrop}
             >
                 <Pressable
@@ -93,13 +142,6 @@ export function NovaDoacaoModal(
                 <View style={styles.modalCard}>
                     <View style={styles.modalHeader}>
                         <View style={styles.modalHeaderTitleGroup}>
-                            <View style={styles.modalHeaderIconContainer}>
-                                <MaterialDesignIcons
-                                    name="package-variant-closed-plus"
-                                    size={20}
-                                    color={theme.colors.primary}
-                                />
-                            </View>
                             <Text style={styles.modalTitle}>Registrar Nova Doação</Text>
                         </View>
                         <TouchableOpacity
@@ -107,7 +149,7 @@ export function NovaDoacaoModal(
                             style={styles.closeButton}
                             hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                         >
-                            <MaterialDesignIcons name="close" size={20} color={theme.colors.textMuted}/>
+                            <Text style={styles.closeButtonText}>✕</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -126,9 +168,14 @@ export function NovaDoacaoModal(
                                 placeholder="Blusa de Frio"
                                 placeholderTextColor={theme.colors.placeholder}
                                 value={nomeItem}
-                                onChangeText={(text) => {
-                                    setNomeItem(text)
-                                    if (erros.nomeItem) setErros((prev) => ({...prev, nomeItem: undefined}));
+                                onChangeText={(text: React.SetStateAction<string>) => {
+                                    setNomeItem(text);
+                                    if (erros.nomeItem) {
+                                        setErros((prev) => ({
+                                            ...prev,
+                                            nomeItem: undefined
+                                        }));
+                                    }
                                 }}
                             />
                             {erros.nomeItem ? <Text style={styles.errorText}>{erros.nomeItem}</Text> : null}
@@ -145,16 +192,23 @@ export function NovaDoacaoModal(
                                 onChangeText={(text) => {
                                     setQtdItem(text);
                                     if (!text) {
-                                        setErros(prev => ({...prev, qtdItem: undefined}));
+                                        setErros(prev => ({
+                                            ...prev,
+                                            qtdItem: undefined
+                                        }));
                                     } else if (!/^\d+$/.test(text)) {
                                         setErros(prev => ({
                                             ...prev,
                                             qtdItem: 'Apenas números inteiros positivos são permitidos.'
                                         }));
                                     } else {
-                                        setErros(prev => ({...prev, qtdItem: undefined}));
+                                        setErros(prev => ({
+                                            ...prev,
+                                            qtdItem: undefined
+                                        }));
                                     }
-                                }}
+                                }
+                            }
                             />
                             {erros.qtdItem ? <Text style={styles.errorText}>{erros.qtdItem}</Text> : null}
                         </View>
@@ -177,11 +231,6 @@ export function NovaDoacaoModal(
                                 >
                                     {pontoSelecionado ? pontoSelecionado.nome : 'Selecione um ponto'}
                                 </Text>
-                                <MaterialDesignIcons
-                                    name={dropdownAberto ? "chevron-up" : "chevron-down"}
-                                    size={20}
-                                    color={theme.colors.textMuted}
-                                />
                             </TouchableOpacity>
                             {erros.ponto ? <Text style={styles.errorText}>{erros.ponto}</Text> : null}
                             {dropdownAberto && (
@@ -199,10 +248,12 @@ export function NovaDoacaoModal(
                                                     onPress={() => {
                                                         setPontoSelecionado(ponto);
                                                         setDropdownAberto(false);
-                                                        if (erros.ponto) setErros(prev => ({
-                                                            ...prev,
-                                                            ponto: undefined
-                                                        }));
+                                                        if (erros.ponto) {
+                                                            setErros(prev => ({
+                                                                ...prev,
+                                                                ponto: undefined
+                                                            }));
+                                                        }
                                                     }}
                                                 >
                                                     <Text
@@ -213,13 +264,6 @@ export function NovaDoacaoModal(
                                                     >
                                                         {ponto.nome}
                                                     </Text>
-                                                    {selecionado && (
-                                                        <MaterialDesignIcons
-                                                            name="check"
-                                                            size={18}
-                                                            color={theme.colors.primary}
-                                                        />
-                                                    )}
                                                 </TouchableOpacity>
                                             )
                                         })}
@@ -242,7 +286,6 @@ export function NovaDoacaoModal(
                             onPress={salvar}
                             activeOpacity={0.8}
                         >
-                            <MaterialDesignIcons name="check" size={18} color={theme.colors.textWhite}/>
                             <Text style={styles.buttonSaveText}>Salvar</Text>
                         </TouchableOpacity>
                     </View>
@@ -286,15 +329,6 @@ const styles = StyleSheet.create({
     modalHeaderTitleGroup: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: theme.spacing.sm,
-    },
-    modalHeaderIconContainer: {
-        width: 32,
-        height: 32,
-        borderRadius: theme.borderRadius.lg,
-        backgroundColor: theme.colors.iconSurface,
-        alignItems: 'center',
-        justifyContent: 'center',
     },
     modalTitle: {
         color: theme.colors.text,
@@ -303,11 +337,17 @@ const styles = StyleSheet.create({
     },
     closeButton: {
         width: 32,
-        height: 32,
+        aspectRatio: 1,
         borderRadius: theme.borderRadius.lg,
         backgroundColor: theme.colors.cardBorder,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    closeButtonText: {
+        color: theme.colors.textMuted,
+        fontSize: theme.fontSize.lg,
+        fontWeight: 'bold',
+        textAlign: 'center',
     },
     formScrollContainer: {
         paddingTop: theme.spacing.lg,

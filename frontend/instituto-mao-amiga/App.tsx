@@ -2,6 +2,7 @@ import React from 'react';
 import {StatusBar} from 'expo-status-bar';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 import TelaListaPontos from './src/screens/TelaListaPontos';
 import TelaDetalhePonto from './src/screens/TelaDetalhePonto';
@@ -12,6 +13,7 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
+    <SafeAreaProvider>
       <NavigationContainer>
         <StatusBar style="light"/>
         <Stack.Navigator
@@ -33,12 +35,13 @@ export default function App() {
               component={TelaDetalhePonto}
               options={{title: 'Detalhes do Ponto'}}
           />
-            <Stack.Screen
-                name="TelaFormularioDoacao"
-                component={TelaFormularioDoacao}
-                options={{title: 'Registrar Doação'}}
-            />
+          <Stack.Screen
+              name="TelaFormularioDoacao"
+              component={TelaFormularioDoacao}
+              options={{title: 'Registrar Doação'}}
+          />
         </Stack.Navigator>
       </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

@@ -5,3 +5,9 @@ export type Ponto = {
     diasHorarios: string;
     funcionamento: string;
 };
+
+export type Doacao = {
+    nomeItem: string;
+    qtdItem: string;
+    pontoSelecionado: Ponto;
+};

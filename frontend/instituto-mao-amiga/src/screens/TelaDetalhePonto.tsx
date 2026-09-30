@@ -11,13 +11,13 @@ function PontoDetalhe({ponto}: { ponto: Ponto }) {
 
             <View style={styles.divisor}/>
 
-            <Text style={styles.label}>📍 Endereço</Text>
+            <Text style={styles.label}>Endereço</Text>
             <Text style={styles.endereco}>{ponto.endereco}</Text>
 
-            <Text style={styles.label}>🕒 Dias e Horários</Text>
+            <Text style={styles.label}>Dias e Horários</Text>
             <Text style={styles.diasHorarios}>{ponto.diasHorarios}</Text>
 
-            <Text style={styles.label}>📦 Atendimento</Text>
+            <Text style={styles.label}>Atendimento</Text>
             <Text style={styles.funcionamento}>{ponto.funcionamento}</Text>
         </View>
     );

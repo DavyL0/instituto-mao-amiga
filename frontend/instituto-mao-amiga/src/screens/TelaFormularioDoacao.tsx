@@ -30,7 +30,7 @@ const DoacaoFormScreen = () => {
 
                 {/* Formuário (Componente Criado) dentro de um Card */}
                 <View style={styles.card}>
-                    <DoacaaoScreen />
+                    <DoacaoScreen />
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
