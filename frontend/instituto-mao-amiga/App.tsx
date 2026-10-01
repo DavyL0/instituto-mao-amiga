@@ -8,8 +8,9 @@ import TelaListaPontos from './src/screens/TelaListaPontos';
 import TelaDetalhePonto from './src/screens/TelaDetalhePonto';
 import TelaFormularioDoacao from './src/screens/TelaFormularioDoacao';
 import {theme} from './src/theme/theme';
+import {RootStackParamList} from './src/types/types';
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (

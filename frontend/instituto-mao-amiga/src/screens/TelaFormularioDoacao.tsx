@@ -7,10 +7,14 @@ import {
     Text,
     View,
 } from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { DoacaoScreen } from '../components/FormularioDoacao';
+import { RootStackParamList } from '../types/types';
+import { theme } from '../theme/theme';
 
-import {DoacaoScreen} from "../components/FormularioDoacao";
+type Props = NativeStackScreenProps<RootStackParamList, 'TelaFormularioDoacao'>;
 
-const DoacaoFormScreen = () => {
+const DoacaoFormScreen = ({ navigation }: Props) => {
     return (
         <KeyboardAvoidingView
             style={styles.container}
@@ -28,7 +32,7 @@ const DoacaoFormScreen = () => {
                     </Text>
                 </View>
 
-                {/* Formuário (Componente Criado) dentro de um Card */}
+                {/* Formulário e Histórico dentro do Card */}
                 <View style={styles.card}>
                     <DoacaoScreen />
                 </View>
@@ -42,33 +46,34 @@ export default DoacaoFormScreen;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f4f6f8',
+        backgroundColor: theme.colors.background,
     },
     scrollContainer: {
-        padding: 20,
-        paddingTop: 40,
+        padding: theme.spacing['2xl'],
     },
     header: {
-        marginBottom: 20,
+        marginBottom: theme.spacing['2xl'],
     },
     title: {
-        fontSize: 28,
+        fontSize: theme.fontSize['3xl'],
         fontWeight: 'bold',
-        color: '#1a1a1a',
+        color: theme.colors.text,
     },
     subtitle: {
-        fontSize: 14,
-        color: '#666',
-        marginTop: 4,
+        fontSize: theme.fontSize.md,
+        color: theme.colors.textMuted,
+        marginTop: theme.spacing.xs,
     },
     card: {
-        backgroundColor: '#ffffff',
-        borderRadius: 12,
-        padding: 16,
-        elevation: 3, // Sombra Android
-        shadowColor: '#000', // Sombra iOS
+        backgroundColor: theme.colors.cardBackground,
+        borderRadius: theme.borderRadius.xl,
+        borderWidth: 1,
+        borderColor: theme.colors.cardBorder,
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
+        elevation: 3,
+        marginBottom: theme.spacing['3xl'],
     },
 });

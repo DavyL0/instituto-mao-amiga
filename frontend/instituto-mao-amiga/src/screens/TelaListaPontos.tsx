@@ -1,18 +1,32 @@
 import React, {useMemo, useState} from 'react';
-import {FlatList, Pressable, StyleSheet, Text, TextInput} from 'react-native';
+import {Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import {SafeAreaView} from "react-native-safe-area-context";
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {pontosMock} from "../mocks/pontosMock";
 import {PontoItem} from "../components/PontoItem";
 import {theme} from "../theme/theme";
 import {NovaDoacaoModal} from "../components/NovaDoacaoModal";
+import {Doacao, RootStackParamList} from "../types/types";
 
-function TelaListaPontos({navigation}: any) {
-    const [busca, setBusca] = useState('')
-    const pontosFiltrados = useMemo(() => {
-        return pontosMock.filter(ponto => ponto.nome.toLowerCase().includes(busca.toLowerCase()))
-    }, [busca])
+type Props = NativeStackScreenProps<RootStackParamList, 'TelaListaPontos'>;
 
+function TelaListaPontos({navigation}: Props) {
+    const [busca, setBusca] = useState('');
     const [modalVisible, setModalVisible] = useState(false);
+
+    const pontosFiltrados = useMemo(() => {
+        return pontosMock.filter(ponto =>
+            ponto.nome.toLowerCase().includes(busca.toLowerCase()) ||
+            ponto.endereco.toLowerCase().includes(busca.toLowerCase())
+        );
+    }, [busca]);
+
+    const handleSalvarDoacao = (doacao: Doacao) => {
+        Alert.alert(
+            'Doação Registrada com Sucesso!',
+            `Item: ${doacao.tipoItem}\nQuantidade: ${doacao.qtdItem}\nPonto: ${doacao.pontoSelecionado.nome}`
+        );
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -25,10 +39,16 @@ function TelaListaPontos({navigation}: any) {
                 onChangeText={setBusca}
                 autoCorrect={false}
             />
-            <NovaDoacaoModal visible={modalVisible} onClose={() => setModalVisible(false)} onSave={() => {/*todo*/}}/>
+            <NovaDoacaoModal
+                visible={modalVisible}
+                onClose={() => setModalVisible(false)}
+                onSave={handleSalvarDoacao}
+            />
             <Pressable
                 style={styles.floatingButton}
                 onPress={() => setModalVisible(true)}
+                accessibilityLabel="Adicionar nova doação"
+                accessibilityRole="button"
             >
                 <Text style={styles.floatingButtonText}>+</Text>
             </Pressable>
@@ -42,6 +62,11 @@ function TelaListaPontos({navigation}: any) {
                     />
                 )}
                 contentContainerStyle={styles.listaContainer}
+                ListEmptyComponent={
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>Nenhum ponto de coleta encontrado.</Text>
+                    </View>
+                }
             />
         </SafeAreaView>
     );
@@ -77,6 +102,15 @@ const styles = StyleSheet.create({
     listaContainer: {
         padding: theme.spacing['2xl'],
         paddingBottom: theme.spacing['3xl'],
+    },
+    emptyContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: theme.spacing['4xl'],
+    },
+    emptyText: {
+        color: theme.colors.textMuted,
+        fontSize: theme.fontSize.lg,
     },
     floatingButton: {
         backgroundColor: theme.colors.primary,

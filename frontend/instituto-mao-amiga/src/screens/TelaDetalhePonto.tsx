@@ -1,8 +1,11 @@
 import React from 'react';
 import {ScrollView, StyleSheet, Text, View} from 'react-native';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {pontosMock} from "../mocks/pontosMock";
-import {Ponto} from "../types/produto";
+import {Ponto, RootStackParamList} from "../types/types";
 import {theme} from "../theme/theme";
+
+type Props = NativeStackScreenProps<RootStackParamList, 'TelaDetalhePonto'>;
 
 function PontoDetalhe({ponto}: { ponto: Ponto }) {
     return (
@@ -23,7 +26,7 @@ function PontoDetalhe({ponto}: { ponto: Ponto }) {
     );
 }
 
-function TelaDetalhePonto({route}: any) {
+function TelaDetalhePonto({route}: Props) {
     const {pontoId} = route.params;
     const ponto = pontosMock.find((item) => item.id === pontoId);
 
