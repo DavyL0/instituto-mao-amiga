@@ -16,6 +16,7 @@ export type Doacao = {
 
 export type RootStackParamList = {
     TelaListaPontos: undefined;
+    TelaDoacoes: undefined;
     TelaDetalhePonto: { pontoId: number };
     TelaFormularioDoacao: undefined;
 };

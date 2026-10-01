@@ -1,4 +1,3 @@
-import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TextInputProps, TouchableOpacity, View } from 'react-native';
 import { Controller, useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -48,7 +47,6 @@ const TextField = ({ label, error, ...inputProps }: TextFieldProps) => (
 );
 
 export const DoacaoScreen = ({ onSuccess }: { onSuccess?: () => void }) => {
-    const [historico, setHistorico] = useState<Doacao[]>([]);
 
     const {
         control,
@@ -62,25 +60,6 @@ export const DoacaoScreen = ({ onSuccess }: { onSuccess?: () => void }) => {
             pontoDestino: '',
         },
     });
-
-    const carregarHistorico = async () => {
-        try {
-            const doacoesSalvas = await AsyncStorage.getItem(STORAGE_KEY_LIST);
-            if (doacoesSalvas) {
-                const parsed = JSON.parse(doacoesSalvas);
-                setHistorico(Array.isArray(parsed) ? parsed : []);
-            } else {
-                setHistorico([]);
-            }
-        } catch (error) {
-            console.error('Erro ao carregar histórico de doações:', error);
-        }
-    };
-
-    useEffect(() => {
-        carregarHistorico();
-    }, []);
-
     const onSubmit = async (data: DoacaoFormData) => {
         try {
             const novaDoacao: Doacao = {
@@ -101,8 +80,6 @@ export const DoacaoScreen = ({ onSuccess }: { onSuccess?: () => void }) => {
             const listaAtual: Doacao[] = doacoesSalvas ? JSON.parse(doacoesSalvas) : [];
             const novaLista = [novaDoacao, ...listaAtual];
             await AsyncStorage.setItem(STORAGE_KEY_LIST, JSON.stringify(novaLista));
-
-            setHistorico(novaLista);
             reset();
             onSuccess?.();
 
@@ -174,57 +151,9 @@ export const DoacaoScreen = ({ onSuccess }: { onSuccess?: () => void }) => {
             >
                 <Text style={styles.buttonSubmitText}>Registrar Doação</Text>
             </TouchableOpacity>
-
-            {/* Seção de Histórico de Doações */}
-            <View style={styles.historicoSection}>
-                <Text style={styles.historicoTitle}>Histórico de Doações</Text>
-
-                {historico.length === 0 ? (
-                    <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>
-                            Nenhuma doação cadastrada até o momento.
-                        </Text>
-                    </View>
-                ) : (
-                    historico.map((item) => {
-                        const destinoNome =
-                            typeof item.pontoSelecionado === 'object' && item.pontoSelecionado !== null
-                                ? item.pontoSelecionado.nome
-                                : typeof item.pontoSelecionado === 'string'
-                                ? item.pontoSelecionado
-                                : 'Não informado';
-
-                        const dataFormatada = item.criadoEm
-                            ? `${new Date(item.criadoEm).toLocaleDateString('pt-BR')} às ${new Date(item.criadoEm).toLocaleTimeString('pt-BR', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                              })}`
-                            : null;
-
-                        return (
-                            <View key={item.id} style={styles.historicoCard}>
-                                <View style={styles.historicoHeaderRow}>
-                                    <Text style={styles.historicoItemNome}>{item.tipoItem}</Text>
-                                    <Text style={styles.historicoItemQtd}>
-                                        Qtd: {item.qtdItem}
-                                    </Text>
-                                </View>
-                                <Text style={styles.historicoDestino}>Destino: {destinoNome}</Text>
-                                {dataFormatada && (
-                                    <Text style={styles.historicoData}>
-                                        Registrado em: {dataFormatada}
-                                    </Text>
-                                )}
-                            </View>
-                        );
-                    })
-                )}
-            </View>
         </View>
     );
 };
-
-export default DoacaoScreen;
 
 const styles = StyleSheet.create({
     mainContainer: {
@@ -269,54 +198,6 @@ const styles = StyleSheet.create({
         color: theme.colors.textWhite,
         fontWeight: 'bold',
         fontSize: theme.fontSize.xl,
-    },
-    historicoSection: {
-        marginTop: theme.spacing['3xl'],
-        borderTopWidth: 1,
-        borderTopColor: theme.colors.cardBorder,
-        paddingTop: theme.spacing['2xl'],
-    },
-    historicoTitle: {
-        fontSize: theme.fontSize['2xl'],
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        marginBottom: theme.spacing.xl,
-    },
-    historicoCard: {
-        backgroundColor: theme.colors.background,
-        borderRadius: theme.borderRadius.lg,
-        padding: theme.spacing.xl,
-        borderWidth: 1,
-        borderColor: theme.colors.cardBorder,
-        marginBottom: theme.spacing.lg,
-    },
-    historicoHeaderRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: theme.spacing.xs,
-    },
-    historicoItemNome: {
-        fontSize: theme.fontSize.lg,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        flex: 1,
-    },
-    historicoItemQtd: {
-        fontSize: theme.fontSize.md,
-        fontWeight: 'bold',
-        color: theme.colors.primary,
-        marginLeft: theme.spacing.sm,
-    },
-    historicoDestino: {
-        fontSize: theme.fontSize.sm,
-        color: theme.colors.textSecondary,
-        marginTop: 2,
-    },
-    historicoData: {
-        fontSize: theme.fontSize.xs,
-        color: theme.colors.textMuted,
-        marginTop: theme.spacing.xs,
     },
     emptyContainer: {
         backgroundColor: theme.colors.background,
