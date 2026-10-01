@@ -39,7 +39,6 @@ export function NovaDoacaoModal(
     const [pontoSelecionado, setPontoSelecionado] = useState<Ponto | null>(null);
     const [dropdownAberto, setDropdownAberto] = useState(false);
     const [erros, setErros] = useState<ErrosForm>({});
-    const [historico, setHistorico] = useState<Doacao[]>([]);
 
     function validar(): boolean {
         const novosErros: ErrosForm = {};
@@ -84,7 +83,6 @@ export function NovaDoacaoModal(
             const novaLista = [novaDoacao, ...listaAtual];
             await AsyncStorage.setItem(STORAGE_KEY_LIST, JSON.stringify(novaLista));
             await AsyncStorage.removeItem(STORAGE_KEY_DRAFT);
-            setHistorico(novaLista);
         } catch (error) {
             console.error('Erro ao salvar doação:', error);
         }
@@ -113,23 +111,8 @@ export function NovaDoacaoModal(
     useEffect(() => {
         if (visible) {
             carregarFormulario();
-            carregarHistorico();
         }
     }, [visible]);
-
-    async function carregarHistorico() {
-        try {
-            const doacoesSalvas = await AsyncStorage.getItem(STORAGE_KEY_LIST);
-            if (doacoesSalvas) {
-                const parsed = JSON.parse(doacoesSalvas);
-                setHistorico(Array.isArray(parsed) ? parsed : []);
-            } else {
-                setHistorico([]);
-            }
-        } catch (error) {
-            console.error('Erro ao carregar histórico de doações:', error);
-        }
-    }
 
     async function carregarFormulario() {
         try {
@@ -296,52 +279,6 @@ export function NovaDoacaoModal(
                                         })}
                                     </ScrollView>
                                 </View>
-                            )}
-                        </View>
-
-                        {/* Seção de Histórico de Doações */}
-                        <View style={styles.historicoSection}>
-                            <Text style={styles.historicoTitle}>Histórico de Doações</Text>
-
-                            {historico.length === 0 ? (
-                                <View style={styles.emptyContainer}>
-                                    <Text style={styles.emptyText}>
-                                        Nenhuma doação cadastrada até o momento.
-                                    </Text>
-                                </View>
-                            ) : (
-                                historico.map((item) => {
-                                    const destinoNome =
-                                        typeof item.pontoSelecionado === 'object' && item.pontoSelecionado !== null
-                                            ? item.pontoSelecionado.nome
-                                            : typeof item.pontoSelecionado === 'string'
-                                            ? item.pontoSelecionado
-                                            : 'Não informado';
-
-                                    const dataFormatada = item.criadoEm
-                                        ? `${new Date(item.criadoEm).toLocaleDateString('pt-BR')} às ${new Date(item.criadoEm).toLocaleTimeString('pt-BR', {
-                                              hour: '2-digit',
-                                              minute: '2-digit',
-                                          })}`
-                                        : null;
-
-                                    return (
-                                        <View key={item.id} style={styles.historicoCard}>
-                                            <View style={styles.historicoHeaderRow}>
-                                                <Text style={styles.historicoItemNome}>{item.tipoItem}</Text>
-                                                <Text style={styles.historicoItemQtd}>
-                                                    Qtd: {item.qtdItem}
-                                                </Text>
-                                            </View>
-                                            <Text style={styles.historicoDestino}>Destino: {destinoNome}</Text>
-                                            {dataFormatada && (
-                                                <Text style={styles.historicoData}>
-                                                    Registrado em: {dataFormatada}
-                                                </Text>
-                                            )}
-                                        </View>
-                                    );
-                                })
                             )}
                         </View>
                     </ScrollView>
@@ -544,54 +481,6 @@ const styles = StyleSheet.create({
         color: theme.colors.textWhite,
         fontSize: theme.fontSize.md,
         fontWeight: 'bold',
-    },
-    historicoSection: {
-        marginTop: theme.spacing['2xl'],
-        borderTopWidth: 1,
-        borderTopColor: theme.colors.cardBorder,
-        paddingTop: theme.spacing.lg,
-    },
-    historicoTitle: {
-        fontSize: theme.fontSize.lg,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        marginBottom: theme.spacing.md,
-    },
-    historicoCard: {
-        backgroundColor: theme.colors.background,
-        borderRadius: theme.borderRadius.lg,
-        padding: theme.spacing.lg,
-        borderWidth: 1,
-        borderColor: theme.colors.cardBorder,
-        marginBottom: theme.spacing.md,
-    },
-    historicoHeaderRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: theme.spacing.xs,
-    },
-    historicoItemNome: {
-        fontSize: theme.fontSize.md,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        flex: 1,
-    },
-    historicoItemQtd: {
-        fontSize: theme.fontSize.sm,
-        fontWeight: 'bold',
-        color: theme.colors.primary,
-        marginLeft: theme.spacing.sm,
-    },
-    historicoDestino: {
-        fontSize: theme.fontSize.xs,
-        color: theme.colors.textSecondary,
-        marginTop: 2,
-    },
-    historicoData: {
-        fontSize: theme.fontSize.xs,
-        color: theme.colors.textMuted,
-        marginTop: theme.spacing.xs,
     },
     emptyContainer: {
         backgroundColor: theme.colors.background,

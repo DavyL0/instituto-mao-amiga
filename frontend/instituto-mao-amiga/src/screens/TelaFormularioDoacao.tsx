@@ -14,7 +14,7 @@ import { theme } from '../theme/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TelaFormularioDoacao'>;
 
-const DoacaoFormScreen = ({ navigation }: Props) => {
+const DoacaoFormScreen = () => {
     return (
         <KeyboardAvoidingView
             style={styles.container}

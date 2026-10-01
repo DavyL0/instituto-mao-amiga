@@ -1,5 +1,5 @@
 import React, {useMemo, useState} from 'react';
-import {Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import {Alert, FlatList, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View} from 'react-native';
 import {SafeAreaView} from "react-native-safe-area-context";
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {pontosMock} from "../mocks/pontosMock";
@@ -29,8 +29,11 @@ function TelaListaPontos({navigation}: Props) {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <Text style={styles.titleText}>Pontos de Coleta</Text>
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+            <View style={styles.header}>
+                <Text style={styles.titleText}>Pontos de Coleta</Text>
+            </View>
+
             <TextInput
                 style={styles.inputBusca}
                 placeholder="Buscar pontos..."
@@ -39,11 +42,13 @@ function TelaListaPontos({navigation}: Props) {
                 onChangeText={setBusca}
                 autoCorrect={false}
             />
+
             <NovaDoacaoModal
                 visible={modalVisible}
                 onClose={() => setModalVisible(false)}
                 onSave={handleSalvarDoacao}
             />
+
             <Pressable
                 style={styles.floatingButton}
                 onPress={() => setModalVisible(true)}
@@ -52,6 +57,7 @@ function TelaListaPontos({navigation}: Props) {
             >
                 <Text style={styles.floatingButtonText}>+</Text>
             </Pressable>
+
             <FlatList
                 data={pontosFiltrados}
                 keyExtractor={(item) => item.id.toString()}
@@ -68,6 +74,35 @@ function TelaListaPontos({navigation}: Props) {
                     </View>
                 }
             />
+
+            {/* Task Bar / Bottom Navigation Bar */}
+            <View style={styles.taskBar}>
+                <TouchableOpacity
+                    style={[styles.taskBarItem, styles.taskBarItemActive]}
+                    activeOpacity={0.7}
+                >
+                    <Text style={styles.taskBarIcon}>📍</Text>
+                    <Text style={[styles.taskBarLabel, styles.taskBarLabelActive]}>Pontos</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.taskBarItem}
+                    onPress={() => navigation.navigate('TelaDoacoes')}
+                    activeOpacity={0.7}
+                >
+                    <Text style={styles.taskBarIcon}>🎁</Text>
+                    <Text style={styles.taskBarLabel}>Doações</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.taskBarItem}
+                    onPress={() => navigation.navigate('TelaFormularioDoacao')}
+                    activeOpacity={0.7}
+                >
+                    <Text style={styles.taskBarIcon}>📝</Text>
+                    <Text style={styles.taskBarLabel}>Cadastrar</Text>
+                </TouchableOpacity>
+            </View>
         </SafeAreaView>
     );
 }
@@ -79,12 +114,14 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: theme.colors.background,
     },
+    header: {
+        paddingHorizontal: theme.spacing['2xl'],
+        paddingTop: theme.spacing['2xl'],
+    },
     titleText: {
         color: theme.colors.text,
         fontSize: theme.fontSize['4xl'],
         fontWeight: 'bold',
-        marginLeft: theme.spacing['2xl'],
-        marginTop: theme.spacing['2xl'],
     },
     inputBusca: {
         backgroundColor: theme.colors.cardBackground,
@@ -101,7 +138,7 @@ const styles = StyleSheet.create({
     },
     listaContainer: {
         padding: theme.spacing['2xl'],
-        paddingBottom: theme.spacing['3xl'],
+        paddingBottom: 90,
     },
     emptyContainer: {
         alignItems: 'center',
@@ -114,19 +151,19 @@ const styles = StyleSheet.create({
     },
     floatingButton: {
         backgroundColor: theme.colors.primary,
-        width: 44,
+        width: 48,
         aspectRatio: 1,
         borderRadius: theme.borderRadius.xl,
         justifyContent: 'center',
         alignItems: 'center',
         position: 'absolute',
-        bottom: 40,
-        right: 30,
-        elevation: 5,
+        bottom: 84,
+        right: 24,
+        elevation: 6,
         shadowColor: theme.colors.shadow,
         shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
         zIndex: 999,
     },
     floatingButtonText: {
@@ -134,5 +171,47 @@ const styles = StyleSheet.create({
         fontSize: theme.fontSize['4xl'],
         fontWeight: 'bold',
         lineHeight: 32,
+    },
+    taskBar: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 68,
+        backgroundColor: theme.colors.cardBackground,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.cardBorder,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        paddingBottom: 6,
+        paddingTop: 6,
+        elevation: 8,
+        shadowColor: theme.colors.shadow,
+        shadowOffset: {width: 0, height: -2},
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+    },
+    taskBarItem: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 4,
+    },
+    taskBarItemActive: {
+        opacity: 1,
+    },
+    taskBarIcon: {
+        fontSize: 20,
+        marginBottom: 2,
+    },
+    taskBarLabel: {
+        fontSize: theme.fontSize.xs,
+        color: theme.colors.textMuted,
+        fontWeight: '600',
+    },
+    taskBarLabelActive: {
+        color: theme.colors.primary,
+        fontWeight: 'bold',
     },
 });

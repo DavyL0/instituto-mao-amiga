@@ -9,6 +9,7 @@ import TelaDetalhePonto from './src/screens/TelaDetalhePonto';
 import TelaFormularioDoacao from './src/screens/TelaFormularioDoacao';
 import {theme} from './src/theme/theme';
 import {RootStackParamList} from './src/types/types';
+import TelaDoacoes from "./src/screens/TelaDoacoes";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -41,6 +42,11 @@ export default function App() {
               component={TelaFormularioDoacao}
               options={{title: 'Registrar Doação'}}
           />
+            <Stack.Screen
+                name="TelaDoacoes"
+                component={TelaDoacoes}
+                options={{title: 'Minhas Doações'}}
+            />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
