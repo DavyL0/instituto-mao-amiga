@@ -1,10 +1,20 @@
-import React, { useEffect } from 'react';
-import { Alert, Button, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useForm } from 'react-hook-form';
+import React, { useEffect, useState } from 'react';
+import { Alert, StyleSheet, Text, TextInput, TextInputProps, TouchableOpacity, View } from 'react-native';
+import { Controller, useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { theme } from '../theme/theme';
+import { Doacao } from '../types/types';
 
-// 1. Schema de Validação (Yup)
+type DoacaoFormData = {
+    tipoItem: string;
+    quantidade: number;
+    pontoDestino: string;
+};
+
+const STORAGE_KEY_LIST = '@institutomaoamiga:doacoes';
+
 const fieldsValidationSchema = yup.object().shape({
     tipoItem: yup
         .string()
@@ -20,85 +30,305 @@ const fieldsValidationSchema = yup.object().shape({
         .required('O ponto de destino não pode ser vazio'),
 });
 
-// 2. Componente Reutilizável de Input com exibição de Erro
-const TextField = ({ label, error, ...inputProps }: any) => (
+type TextFieldProps = TextInputProps & {
+    label: string;
+    error?: string;
+};
+
+const TextField = ({ label, error, ...inputProps }: TextFieldProps) => (
     <View style={styles.container}>
         <Text style={styles.label}>{label}</Text>
-        <TextInput style={styles.input} {...inputProps} />
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        <TextInput
+            style={[styles.input, error ? styles.inputError : null]}
+            placeholderTextColor={theme.colors.placeholder}
+            {...inputProps}
+        />
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
 );
 
-// 3. Tela Principal
-export const DoacaoScreen = () => {
+export const DoacaoScreen = ({ onSuccess }: { onSuccess?: () => void }) => {
+    const [historico, setHistorico] = useState<Doacao[]>([]);
+
     const {
-        register,
-        setValue,
+        control,
         handleSubmit,
+        reset,
         formState: { errors },
-    } = useForm({
+    } = useForm<DoacaoFormData>({
         resolver: yupResolver(fieldsValidationSchema),
+        defaultValues: {
+            tipoItem: '',
+            pontoDestino: '',
+        },
     });
 
-    useEffect(() => {
-        register('tipoItem');
-        register('quantidade');
-        register('pontoDestino');
-    }, [register]);
+    const carregarHistorico = async () => {
+        try {
+            const doacoesSalvas = await AsyncStorage.getItem(STORAGE_KEY_LIST);
+            if (doacoesSalvas) {
+                const parsed = JSON.parse(doacoesSalvas);
+                setHistorico(Array.isArray(parsed) ? parsed : []);
+            } else {
+                setHistorico([]);
+            }
+        } catch (error) {
+            console.error('Erro ao carregar histórico de doações:', error);
+        }
+    };
 
-    const onSubmit = (data: any) => {
-        Alert.alert(
-            'Doação Registrada',
-            `Item: ${data.tipoItem}\nQtd: ${data.quantidade}\nDestino: ${data.pontoDestino}`
-        );
+    useEffect(() => {
+        carregarHistorico();
+    }, []);
+
+    const onSubmit = async (data: DoacaoFormData) => {
+        try {
+            const novaDoacao: Doacao = {
+                id: Date.now(),
+                tipoItem: data.tipoItem.trim(),
+                qtdItem: data.quantidade,
+                pontoSelecionado: {
+                    id: 0,
+                    nome: data.pontoDestino.trim(),
+                    endereco: '',
+                    diasHorarios: '',
+                    funcionamento: '',
+                },
+                criadoEm: new Date().toISOString(),
+            };
+
+            const doacoesSalvas = await AsyncStorage.getItem(STORAGE_KEY_LIST);
+            const listaAtual: Doacao[] = doacoesSalvas ? JSON.parse(doacoesSalvas) : [];
+            const novaLista = [novaDoacao, ...listaAtual];
+            await AsyncStorage.setItem(STORAGE_KEY_LIST, JSON.stringify(novaLista));
+
+            setHistorico(novaLista);
+            reset();
+            onSuccess?.();
+
+            Alert.alert(
+                'Doação Registrada com Sucesso!',
+                `Item: ${novaDoacao.tipoItem}\nQuantidade: ${novaDoacao.qtdItem}\nDestino: ${novaDoacao.pontoSelecionado.nome}`
+            );
+        } catch (error) {
+            console.error('Erro ao registrar doação:', error);
+            Alert.alert('Erro', 'Não foi possível registrar a doação.');
+        }
     };
 
     return (
         <View style={styles.mainContainer}>
-            <TextField
-                label="Tipo do Item"
-                placeholder="Coloque o Tipo do Item"
-                onChangeText={(value: string) => setValue('tipoItem', value)}
-                error={errors.tipoItem?.message}
+            <Controller
+                control={control}
+                name="tipoItem"
+                render={({ field: { onChange, onBlur, value } }) => (
+                    <TextField
+                        label="Tipo do Item"
+                        placeholder="Ex: Alimentos não perecíveis"
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        value={value}
+                        error={errors.tipoItem?.message}
+                    />
+                )}
             />
-            <TextField
-                label="Quantidade"
-                placeholder="Quantidade de Itens"
-                keyboardType="numeric"
-                onChangeText={(value: number) => setValue('quantidade', value)}
-                error={errors.quantidade?.message}
+
+            <Controller
+                control={control}
+                name="quantidade"
+                render={({ field: { onChange, onBlur, value } }) => (
+                    <TextField
+                        label="Quantidade"
+                        placeholder="Ex: 10"
+                        keyboardType="numeric"
+                        onBlur={onBlur}
+                        onChangeText={(text) => {
+                            const parsed = parseInt(text, 10);
+                            onChange(isNaN(parsed) ? undefined : parsed);
+                        }}
+                        value={value !== undefined ? String(value) : ''}
+                        error={errors.quantidade?.message}
+                    />
+                )}
             />
-            <TextField
-                label="Ponto de Destino"
-                placeholder="Digite o Endereço do Ponto de Destino"
-                onChangeText={(value: string) => setValue('pontoDestino', value)}
-                error={errors.pontoDestino?.message}
+
+            <Controller
+                control={control}
+                name="pontoDestino"
+                render={({ field: { onChange, onBlur, value } }) => (
+                    <TextField
+                        label="Ponto de Destino"
+                        placeholder="Ex: Catedral Bom Jesus"
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        value={value}
+                        error={errors.pontoDestino?.message}
+                    />
+                )}
             />
-            <Button onPress={handleSubmit(onSubmit)} title="Registrar Doação" />
+
+            <TouchableOpacity
+                style={styles.buttonSubmit}
+                onPress={handleSubmit(onSubmit)}
+                activeOpacity={0.8}
+            >
+                <Text style={styles.buttonSubmitText}>Registrar Doação</Text>
+            </TouchableOpacity>
+
+            {/* Seção de Histórico de Doações */}
+            <View style={styles.historicoSection}>
+                <Text style={styles.historicoTitle}>Histórico de Doações</Text>
+
+                {historico.length === 0 ? (
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>
+                            Nenhuma doação cadastrada até o momento.
+                        </Text>
+                    </View>
+                ) : (
+                    historico.map((item) => {
+                        const destinoNome =
+                            typeof item.pontoSelecionado === 'object' && item.pontoSelecionado !== null
+                                ? item.pontoSelecionado.nome
+                                : typeof item.pontoSelecionado === 'string'
+                                ? item.pontoSelecionado
+                                : 'Não informado';
+
+                        const dataFormatada = item.criadoEm
+                            ? `${new Date(item.criadoEm).toLocaleDateString('pt-BR')} às ${new Date(item.criadoEm).toLocaleTimeString('pt-BR', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                              })}`
+                            : null;
+
+                        return (
+                            <View key={item.id} style={styles.historicoCard}>
+                                <View style={styles.historicoHeaderRow}>
+                                    <Text style={styles.historicoItemNome}>{item.tipoItem}</Text>
+                                    <Text style={styles.historicoItemQtd}>
+                                        Qtd: {item.qtdItem}
+                                    </Text>
+                                </View>
+                                <Text style={styles.historicoDestino}>Destino: {destinoNome}</Text>
+                                {dataFormatada && (
+                                    <Text style={styles.historicoData}>
+                                        Registrado em: {dataFormatada}
+                                    </Text>
+                                )}
+                            </View>
+                        );
+                    })
+                )}
+            </View>
         </View>
     );
 };
 
+export default DoacaoScreen;
+
 const styles = StyleSheet.create({
     mainContainer: {
-        padding: 16,
+        padding: theme.spacing['2xl'],
     },
     container: {
-        marginBottom: 12,
+        marginBottom: theme.spacing.xl,
     },
     label: {
-        marginBottom: 4,
-        fontWeight: 'bold',
+        marginBottom: theme.spacing.xs,
+        fontWeight: '600',
+        color: theme.colors.textSecondary,
+        fontSize: theme.fontSize.sm,
     },
     input: {
         borderWidth: 1,
-        borderColor: '#ccc',
-        borderRadius: 4,
-        padding: 8,
+        borderColor: theme.colors.cardBorder,
+        borderRadius: theme.borderRadius.lg,
+        padding: theme.spacing.md,
+        backgroundColor: theme.colors.background,
+        color: theme.colors.text,
+        fontSize: theme.fontSize.md,
+        height: 46,
+    },
+    inputError: {
+        borderColor: theme.colors.danger,
     },
     errorText: {
-        color: 'red',
-        fontSize: 12,
-        marginTop: 4,
+        color: theme.colors.danger,
+        fontSize: theme.fontSize.xs,
+        marginTop: theme.spacing.xs,
+    },
+    buttonSubmit: {
+        backgroundColor: theme.colors.primary,
+        borderRadius: theme.borderRadius.lg,
+        paddingVertical: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: theme.spacing.md,
+    },
+    buttonSubmitText: {
+        color: theme.colors.textWhite,
+        fontWeight: 'bold',
+        fontSize: theme.fontSize.xl,
+    },
+    historicoSection: {
+        marginTop: theme.spacing['3xl'],
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.cardBorder,
+        paddingTop: theme.spacing['2xl'],
+    },
+    historicoTitle: {
+        fontSize: theme.fontSize['2xl'],
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        marginBottom: theme.spacing.xl,
+    },
+    historicoCard: {
+        backgroundColor: theme.colors.background,
+        borderRadius: theme.borderRadius.lg,
+        padding: theme.spacing.xl,
+        borderWidth: 1,
+        borderColor: theme.colors.cardBorder,
+        marginBottom: theme.spacing.lg,
+    },
+    historicoHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: theme.spacing.xs,
+    },
+    historicoItemNome: {
+        fontSize: theme.fontSize.lg,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        flex: 1,
+    },
+    historicoItemQtd: {
+        fontSize: theme.fontSize.md,
+        fontWeight: 'bold',
+        color: theme.colors.primary,
+        marginLeft: theme.spacing.sm,
+    },
+    historicoDestino: {
+        fontSize: theme.fontSize.sm,
+        color: theme.colors.textSecondary,
+        marginTop: 2,
+    },
+    historicoData: {
+        fontSize: theme.fontSize.xs,
+        color: theme.colors.textMuted,
+        marginTop: theme.spacing.xs,
+    },
+    emptyContainer: {
+        backgroundColor: theme.colors.background,
+        borderRadius: theme.borderRadius.lg,
+        padding: theme.spacing['2xl'],
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: theme.colors.cardBorder,
+    },
+    emptyText: {
+        fontSize: theme.fontSize.md,
+        color: theme.colors.textMuted,
+        textAlign: 'center',
     },
 });

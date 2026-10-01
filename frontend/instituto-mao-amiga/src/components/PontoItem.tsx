@@ -1,4 +1,4 @@
-import {Ponto} from "../types/produto";
+import {Ponto} from "../types/types";
 import {StyleSheet, TouchableOpacity, Text} from "react-native";
 import {theme} from "../theme/theme";
 

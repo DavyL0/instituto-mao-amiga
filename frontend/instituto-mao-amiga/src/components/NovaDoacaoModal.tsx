@@ -1,4 +1,4 @@
-import {Doacao, Ponto} from "../types/produto";
+import {Doacao, Ponto} from "../types/types";
 import {
     KeyboardAvoidingView,
     Modal,
@@ -23,80 +23,37 @@ type NovoPontoModalProps = {
 };
 
 type ErrosForm = {
-    nomeItem?: string,
-    qtdItem?: string,
-    ponto?: string,
-}
+    tipoItem?: string;
+    qtdItem?: string;
+    ponto?: string;
+};
+
+const STORAGE_KEY_LIST = '@institutomaoamiga:doacoes';
+const STORAGE_KEY_DRAFT = '@institutomaoamiga:draft_doacao';
 
 export function NovaDoacaoModal(
     {visible, onClose, onSave}: NovoPontoModalProps
 ) {
-    const STORAGE_KEY = '@comprebem:nova_doacao';
-    const [nomeItem, setNomeItem] = useState('')
-    const [qtdItem, setQtdItem] = useState('')
-    const [pontoSelecionado, setPontoSelecionado] = useState<Ponto | null>(null)
+    const [tipoItem, setTipoItem] = useState('');
+    const [qtdItem, setQtdItem] = useState('');
+    const [pontoSelecionado, setPontoSelecionado] = useState<Ponto | null>(null);
     const [dropdownAberto, setDropdownAberto] = useState(false);
     const [erros, setErros] = useState<ErrosForm>({});
-
-    useEffect(() => {
-        const dados = {
-            nomeItem,
-            qtdItem,
-            pontoSelecionado
-        };
-
-        AsyncStorage.setItem(
-            STORAGE_KEY,
-            JSON.stringify(dados)
-        ).catch((error) => {
-            console.error('Erro ao salvar formulário:', error);
-        });
-    }, [nomeItem, qtdItem, pontoSelecionado]);
-
-    useEffect(() => {
-        if (visible) {
-            carregarFormulario();
-        }
-    }, [visible]);
-
-    async function carregarFormulario() {
-        try {
-            const dadosSalvos = await AsyncStorage.getItem(STORAGE_KEY);
-
-            if (dadosSalvos) {
-                const dados = JSON.parse(dadosSalvos);
-
-                setNomeItem(dados.nomeItem ?? '');
-                setQtdItem(dados.qtdItem ?? '');
-                setPontoSelecionado(dados.pontoSelecionado ?? null);
-            }
-        } catch (error) {
-            console.error('Erro ao carregar formulário:', error);
-        }
-    }
-
-    function limparFormulario() {
-        setNomeItem('')
-        setQtdItem('')
-        setPontoSelecionado(null)
-        setErros({})
-    }
-
-    function fechar() {
-        limparFormulario();
-        onClose();
-    }
+    const [historico, setHistorico] = useState<Doacao[]>([]);
 
     function validar(): boolean {
-        const novosErros: ErrosForm = {}
-        if (!nomeItem.trim()) {
-            novosErros.nomeItem = 'O nome do item é obrigatório.';
+        const novosErros: ErrosForm = {};
+
+        if (!tipoItem.trim()) {
+            novosErros.tipoItem = 'O tipo do item é obrigatório.';
         }
+
+        const qtdNumerica = Number(qtdItem.trim().replace(',', '.'));
         if (!qtdItem.trim()) {
             novosErros.qtdItem = 'A quantidade é obrigatória.';
-        } else if (isNaN(Number(qtdItem)) || Number(qtdItem) <= 0) {
+        } else if (isNaN(qtdNumerica) || qtdNumerica <= 0) {
             novosErros.qtdItem = 'Informe uma quantidade válida maior que zero.';
-        } else if (!Number.isInteger(Number(qtdItem))) {
+        } else if (!Number.isInteger(qtdNumerica)) {
             novosErros.qtdItem = 'A quantidade deve ser um número inteiro.';
         }
 
@@ -104,24 +61,103 @@ export function NovaDoacaoModal(
             novosErros.ponto = 'Selecione o ponto de destino.';
         }
 
-        setErros(novosErros)
+        setErros(novosErros);
         return Object.keys(novosErros).length === 0;
     }
 
     async function salvar() {
         if (!validar()) return;
 
+        const qtdNumerica = Number(qtdItem.trim().replace(',', '.'));
+
         const novaDoacao: Doacao = {
-            nomeItem,
-            qtdItem,
-            pontoSelecionado: pontoSelecionado!
+            id: Date.now(),
+            tipoItem: tipoItem.trim(),
+            qtdItem: qtdNumerica,
+            pontoSelecionado: pontoSelecionado!,
+            criadoEm: new Date().toISOString()
         };
 
+        try {
+            const doacoesSalvas = await AsyncStorage.getItem(STORAGE_KEY_LIST);
+            const listaAtual: Doacao[] = doacoesSalvas ? JSON.parse(doacoesSalvas) : [];
+            const novaLista = [novaDoacao, ...listaAtual];
+            await AsyncStorage.setItem(STORAGE_KEY_LIST, JSON.stringify(novaLista));
+            await AsyncStorage.removeItem(STORAGE_KEY_DRAFT);
+            setHistorico(novaLista);
+        } catch (error) {
+            console.error('Erro ao salvar doação:', error);
+        }
+
+        limparFormulario();
         onSave(novaDoacao);
+    }
 
-        await AsyncStorage.removeItem(STORAGE_KEY);
+    useEffect(() => {
+        if (!visible) return;
 
-        fechar();
+        const dados = {
+            tipoItem,
+            qtdItem,
+            pontoSelecionado,
+        };
+
+        AsyncStorage.setItem(
+            STORAGE_KEY_DRAFT,
+            JSON.stringify(dados)
+        ).catch((error) => {
+            console.error('Erro ao salvar rascunho:', error);
+        });
+    }, [tipoItem, qtdItem, pontoSelecionado, visible]);
+
+    useEffect(() => {
+        if (visible) {
+            carregarFormulario();
+            carregarHistorico();
+        }
+    }, [visible]);
+
+    async function carregarHistorico() {
+        try {
+            const doacoesSalvas = await AsyncStorage.getItem(STORAGE_KEY_LIST);
+            if (doacoesSalvas) {
+                const parsed = JSON.parse(doacoesSalvas);
+                setHistorico(Array.isArray(parsed) ? parsed : []);
+            } else {
+                setHistorico([]);
+            }
+        } catch (error) {
+            console.error('Erro ao carregar histórico de doações:', error);
+        }
+    }
+
+    async function carregarFormulario() {
+        try {
+            const dadosSalvos = await AsyncStorage.getItem(STORAGE_KEY_DRAFT);
+
+            if (dadosSalvos) {
+                const dados = JSON.parse(dadosSalvos);
+
+                setTipoItem(dados.tipoItem ?? '');
+                setQtdItem(dados.qtdItem ?? '');
+                setPontoSelecionado(dados.pontoSelecionado ?? null);
+            }
+        } catch (error) {
+            console.error('Erro ao carregar rascunho:', error);
+        }
+    }
+
+    function limparFormulario() {
+        setTipoItem('');
+        setQtdItem('');
+        setPontoSelecionado(null);
+        setErros({});
+        setDropdownAberto(false);
+    }
+
+    function fechar() {
+        limparFormulario();
+        onClose();
     }
 
     return (
@@ -163,22 +199,22 @@ export function NovaDoacaoModal(
                             <TextInput
                                 style={[
                                     styles.modalInput,
-                                    erros.nomeItem ? styles.inputError : null,
+                                    erros.tipoItem ? styles.inputError : null,
                                 ]}
-                                placeholder="Blusa de Frio"
+                                placeholder="Ex: Blusa de Frio"
                                 placeholderTextColor={theme.colors.placeholder}
-                                value={nomeItem}
-                                onChangeText={(text: React.SetStateAction<string>) => {
-                                    setNomeItem(text);
-                                    if (erros.nomeItem) {
+                                value={tipoItem}
+                                onChangeText={(text: string) => {
+                                    setTipoItem(text);
+                                    if (erros.tipoItem) {
                                         setErros((prev) => ({
                                             ...prev,
-                                            nomeItem: undefined
+                                            tipoItem: undefined
                                         }));
                                     }
                                 }}
                             />
-                            {erros.nomeItem ? <Text style={styles.errorText}>{erros.nomeItem}</Text> : null}
+                            {erros.tipoItem ? <Text style={styles.errorText}>{erros.tipoItem}</Text> : null}
                         </View>
                         <View style={styles.formGroup}>
                             <Text style={styles.inputLabel}>Quantidade*</Text>
@@ -188,27 +224,18 @@ export function NovaDoacaoModal(
                                     erros.qtdItem ? styles.inputError : null
                                 ]}
                                 keyboardType='number-pad'
+                                placeholder="Ex: 5"
+                                placeholderTextColor={theme.colors.placeholder}
                                 value={qtdItem}
                                 onChangeText={(text) => {
                                     setQtdItem(text);
-                                    if (!text) {
-                                        setErros(prev => ({
-                                            ...prev,
-                                            qtdItem: undefined
-                                        }));
-                                    } else if (!/^\d+$/.test(text)) {
-                                        setErros(prev => ({
-                                            ...prev,
-                                            qtdItem: 'Apenas números inteiros positivos são permitidos.'
-                                        }));
-                                    } else {
+                                    if (erros.qtdItem) {
                                         setErros(prev => ({
                                             ...prev,
                                             qtdItem: undefined
                                         }));
                                     }
-                                }
-                            }
+                                }}
                             />
                             {erros.qtdItem ? <Text style={styles.errorText}>{erros.qtdItem}</Text> : null}
                         </View>
@@ -237,7 +264,7 @@ export function NovaDoacaoModal(
                                 <View style={styles.dropdownContainer}>
                                     <ScrollView style={styles.dropdownScroll} nestedScrollEnabled={true}>
                                         {pontosMock.map(ponto => {
-                                            const selecionado = pontoSelecionado?.id === ponto.id
+                                            const selecionado = pontoSelecionado?.id === ponto.id;
                                             return (
                                                 <TouchableOpacity
                                                     key={ponto.id}
@@ -265,10 +292,56 @@ export function NovaDoacaoModal(
                                                         {ponto.nome}
                                                     </Text>
                                                 </TouchableOpacity>
-                                            )
+                                            );
                                         })}
                                     </ScrollView>
                                 </View>
+                            )}
+                        </View>
+
+                        {/* Seção de Histórico de Doações */}
+                        <View style={styles.historicoSection}>
+                            <Text style={styles.historicoTitle}>Histórico de Doações</Text>
+
+                            {historico.length === 0 ? (
+                                <View style={styles.emptyContainer}>
+                                    <Text style={styles.emptyText}>
+                                        Nenhuma doação cadastrada até o momento.
+                                    </Text>
+                                </View>
+                            ) : (
+                                historico.map((item) => {
+                                    const destinoNome =
+                                        typeof item.pontoSelecionado === 'object' && item.pontoSelecionado !== null
+                                            ? item.pontoSelecionado.nome
+                                            : typeof item.pontoSelecionado === 'string'
+                                            ? item.pontoSelecionado
+                                            : 'Não informado';
+
+                                    const dataFormatada = item.criadoEm
+                                        ? `${new Date(item.criadoEm).toLocaleDateString('pt-BR')} às ${new Date(item.criadoEm).toLocaleTimeString('pt-BR', {
+                                              hour: '2-digit',
+                                              minute: '2-digit',
+                                          })}`
+                                        : null;
+
+                                    return (
+                                        <View key={item.id} style={styles.historicoCard}>
+                                            <View style={styles.historicoHeaderRow}>
+                                                <Text style={styles.historicoItemNome}>{item.tipoItem}</Text>
+                                                <Text style={styles.historicoItemQtd}>
+                                                    Qtd: {item.qtdItem}
+                                                </Text>
+                                            </View>
+                                            <Text style={styles.historicoDestino}>Destino: {destinoNome}</Text>
+                                            {dataFormatada && (
+                                                <Text style={styles.historicoData}>
+                                                    Registrado em: {dataFormatada}
+                                                </Text>
+                                            )}
+                                        </View>
+                                    );
+                                })
                             )}
                         </View>
                     </ScrollView>
@@ -471,5 +544,66 @@ const styles = StyleSheet.create({
         color: theme.colors.textWhite,
         fontSize: theme.fontSize.md,
         fontWeight: 'bold',
+    },
+    historicoSection: {
+        marginTop: theme.spacing['2xl'],
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.cardBorder,
+        paddingTop: theme.spacing.lg,
+    },
+    historicoTitle: {
+        fontSize: theme.fontSize.lg,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        marginBottom: theme.spacing.md,
+    },
+    historicoCard: {
+        backgroundColor: theme.colors.background,
+        borderRadius: theme.borderRadius.lg,
+        padding: theme.spacing.lg,
+        borderWidth: 1,
+        borderColor: theme.colors.cardBorder,
+        marginBottom: theme.spacing.md,
+    },
+    historicoHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: theme.spacing.xs,
+    },
+    historicoItemNome: {
+        fontSize: theme.fontSize.md,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        flex: 1,
+    },
+    historicoItemQtd: {
+        fontSize: theme.fontSize.sm,
+        fontWeight: 'bold',
+        color: theme.colors.primary,
+        marginLeft: theme.spacing.sm,
+    },
+    historicoDestino: {
+        fontSize: theme.fontSize.xs,
+        color: theme.colors.textSecondary,
+        marginTop: 2,
+    },
+    historicoData: {
+        fontSize: theme.fontSize.xs,
+        color: theme.colors.textMuted,
+        marginTop: theme.spacing.xs,
+    },
+    emptyContainer: {
+        backgroundColor: theme.colors.background,
+        borderRadius: theme.borderRadius.lg,
+        padding: theme.spacing.lg,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: theme.colors.cardBorder,
+    },
+    emptyText: {
+        fontSize: theme.fontSize.sm,
+        color: theme.colors.textMuted,
+        textAlign: 'center',
     },
 });
