@@ -1,4 +1,3 @@
-import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TextInputProps, TouchableOpacity, View } from 'react-native';
 import { Controller, useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -48,7 +47,6 @@ const TextField = ({ label, error, ...inputProps }: TextFieldProps) => (
 );
 
 export const DoacaoScreen = ({ onSuccess }: { onSuccess?: () => void }) => {
-    const [historico, setHistorico] = useState<Doacao[]>([]);
 
     const {
         control,
@@ -62,25 +60,6 @@ export const DoacaoScreen = ({ onSuccess }: { onSuccess?: () => void }) => {
             pontoDestino: '',
         },
     });
-
-    const carregarHistorico = async () => {
-        try {
-            const doacoesSalvas = await AsyncStorage.getItem(STORAGE_KEY_LIST);
-            if (doacoesSalvas) {
-                const parsed = JSON.parse(doacoesSalvas);
-                setHistorico(Array.isArray(parsed) ? parsed : []);
-            } else {
-                setHistorico([]);
-            }
-        } catch (error) {
-            console.error('Erro ao carregar histórico de doações:', error);
-        }
-    };
-
-    useEffect(() => {
-        carregarHistorico();
-    }, []);
-
     const onSubmit = async (data: DoacaoFormData) => {
         try {
             const novaDoacao: Doacao = {
@@ -101,8 +80,6 @@ export const DoacaoScreen = ({ onSuccess }: { onSuccess?: () => void }) => {
             const listaAtual: Doacao[] = doacoesSalvas ? JSON.parse(doacoesSalvas) : [];
             const novaLista = [novaDoacao, ...listaAtual];
             await AsyncStorage.setItem(STORAGE_KEY_LIST, JSON.stringify(novaLista));
-
-            setHistorico(novaLista);
             reset();
             onSuccess?.();
 
@@ -177,8 +154,6 @@ export const DoacaoScreen = ({ onSuccess }: { onSuccess?: () => void }) => {
         </View>
     );
 };
-
-export default DoacaoScreen;
 
 const styles = StyleSheet.create({
     mainContainer: {
