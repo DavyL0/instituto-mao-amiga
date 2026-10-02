@@ -7,6 +7,7 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import TelaListaPontos from './src/screens/TelaListaPontos';
 import TelaDetalhePonto from './src/screens/TelaDetalhePonto';
 import TelaFormularioDoacao from './src/screens/TelaFormularioDoacao';
+import TelaDetalheDoacao from './src/screens/TelaDetalheDoacao';
 import {theme} from './src/theme/theme';
 import {RootStackParamList} from './src/types/types';
 import TelaDoacoes from "./src/screens/TelaDoacoes";
@@ -42,11 +43,16 @@ export default function App() {
               component={TelaFormularioDoacao}
               options={{title: 'Registrar Doação'}}
           />
-            <Stack.Screen
-                name="TelaDoacoes"
-                component={TelaDoacoes}
-                options={{title: 'Minhas Doações'}}
-            />
+          <Stack.Screen
+              name="TelaDoacoes"
+              component={TelaDoacoes}
+              options={{title: 'Minhas Doações'}}
+          />
+          <Stack.Screen
+              name="TelaDetalheDoacao"
+              component={TelaDetalheDoacao}
+              options={{title: 'Detalhes da Doação'}}
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
