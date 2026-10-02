@@ -1,14 +1,30 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useFocusEffect } from '@react-navigation/native';
+import {
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { theme } from '../theme/theme';
 import { Doacao, RootStackParamList } from '../types/types';
-import { carregarHistorico, getTotalHistorico, obterDoacaoPorId } from '../services/doacoesService';
+import { carregarHistorico, getTotalHistorico, excluirDoacao } from '../services/doacoesService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TelaDetalheDoacao'>;
 
-function DoacaoDetalhe({ doacao, totalGeral }: { doacao: Doacao; totalGeral?: { totalRegistros: number; totalItens: number } }) {
+function DoacaoDetalhe({
+    doacao,
+    totalGeral,
+    onExcluir,
+}: {
+    doacao: Doacao;
+    totalGeral?: { totalRegistros: number; totalItens: number };
+    onExcluir: () => void;
+}) {
     const destinoNome =
         typeof doacao.pontoSelecionado === 'object' && doacao.pontoSelecionado !== null
             ? doacao.pontoSelecionado.nome
@@ -49,11 +65,19 @@ function DoacaoDetalhe({ doacao, totalGeral }: { doacao: Doacao; totalGeral?: { 
                     </Text>
                 </>
             )}
+
+            <TouchableOpacity
+                style={styles.btnExcluir}
+                onPress={onExcluir}
+                activeOpacity={0.8}
+            >
+                <Text style={styles.btnExcluirText}>Excluir Doação</Text>
+            </TouchableOpacity>
         </View>
     );
 }
 
-function TelaDetalheDoacao({ route }: Props) {
+function TelaDetalheDoacao({ route, navigation }: Props) {
     const { doacaoId } = route.params;
     const [doacao, setDoacao] = useState<Doacao | null>(null);
     const [totalGeral, setTotalGeral] = useState<{ totalRegistros: number; totalItens: number } | undefined>(undefined);
@@ -64,7 +88,7 @@ function TelaDetalheDoacao({ route }: Props) {
         const historico = await carregarHistorico();
         const itemEncontrado = historico.find((item) => item.id === doacaoId);
         const totais = await getTotalHistorico(historico);
-        
+
         setDoacao(itemEncontrado || null);
         setTotalGeral(totais);
         setLoading(false);
@@ -75,6 +99,49 @@ function TelaDetalheDoacao({ route }: Props) {
             carregarDados();
         }, [doacaoId])
     );
+
+    const handleExcluirDoacao = (item: Doacao) => {
+        const pontoNome =
+            typeof item.pontoSelecionado === 'object' && item.pontoSelecionado !== null
+                ? item.pontoSelecionado.nome
+                : typeof item.pontoSelecionado === 'string'
+                ? item.pontoSelecionado
+                : 'Não informado';
+
+        Alert.alert(
+            'Excluir Doação',
+            `Deseja realmente excluir esta doação?\n\n• Item: ${item.tipoItem}\n• Quantidade: ${item.qtdItem}\n• Ponto: ${pontoNome}`,
+            [
+                {
+                    text: 'Cancelar',
+                    style: 'cancel',
+                },
+                {
+                    text: 'Excluir',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await excluirDoacao(item.id);
+                            Alert.alert('Sucesso', 'Doação excluída com sucesso!', [
+                                {
+                                    text: 'OK',
+                                    onPress: () => {
+                                        if (navigation.canGoBack()) {
+                                            navigation.goBack();
+                                        } else {
+                                            navigation.navigate('TelaDoacoes');
+                                        }
+                                    },
+                                },
+                            ]);
+                        } catch (error) {
+                            Alert.alert('Erro', 'Não foi possível excluir a doação.');
+                        }
+                    },
+                },
+            ]
+        );
+    };
 
     if (loading) {
         return (
@@ -94,7 +161,11 @@ function TelaDetalheDoacao({ route }: Props) {
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.detalheScroll}>
-            <DoacaoDetalhe doacao={doacao} totalGeral={totalGeral} />
+            <DoacaoDetalhe
+                doacao={doacao}
+                totalGeral={totalGeral}
+                onExcluir={() => handleExcluirDoacao(doacao)}
+            />
         </ScrollView>
     );
 }
@@ -162,6 +233,19 @@ const styles = StyleSheet.create({
         fontSize: theme.fontSize.sm,
         color: theme.colors.textSecondary,
         lineHeight: 20,
+    },
+    btnExcluir: {
+        backgroundColor: theme.colors.danger,
+        borderRadius: theme.borderRadius.md,
+        paddingVertical: theme.spacing.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: theme.spacing['2xl'],
+    },
+    btnExcluirText: {
+        color: theme.colors.textWhite,
+        fontWeight: 'bold',
+        fontSize: theme.fontSize.md,
     },
     erroText: {
         color: theme.colors.danger,
