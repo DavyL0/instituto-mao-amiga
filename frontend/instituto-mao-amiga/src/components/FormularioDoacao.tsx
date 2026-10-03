@@ -1,18 +1,11 @@
+import React, { useEffect } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TextInputProps, TouchableOpacity, View } from 'react-native';
 import { Controller, useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { theme } from '../theme/theme';
 import { Doacao } from '../types/types';
-
-type DoacaoFormData = {
-    tipoItem: string;
-    quantidade: number;
-    pontoDestino: string;
-};
-
-const STORAGE_KEY_LIST = '@institutomaoamiga:doacoes';
+import { criarDoacao, editarDoacao, DoacaoFormData } from '../services/doacoesService';
 
 const fieldsValidationSchema = yup.object().shape({
     tipoItem: yup
@@ -46,7 +39,13 @@ const TextField = ({ label, error, ...inputProps }: TextFieldProps) => (
     </View>
 );
 
-export const DoacaoScreen = ({ onSuccess }: { onSuccess?: () => void }) => {
+type DoacaoScreenProps = {
+    doacaoParaEditar?: Doacao | null;
+    onSuccess?: (doacaoSalva?: Doacao) => void;
+};
+
+export const DoacaoScreen = ({ doacaoParaEditar, onSuccess }: DoacaoScreenProps) => {
+    const isEditing = Boolean(doacaoParaEditar);
 
     const {
         control,
@@ -57,39 +56,59 @@ export const DoacaoScreen = ({ onSuccess }: { onSuccess?: () => void }) => {
         resolver: yupResolver(fieldsValidationSchema),
         defaultValues: {
             tipoItem: '',
+            quantidade: undefined as unknown as number,
             pontoDestino: '',
         },
     });
+
+    useEffect(() => {
+        if (doacaoParaEditar) {
+            reset({
+                tipoItem: doacaoParaEditar.tipoItem,
+                quantidade: doacaoParaEditar.qtdItem,
+                pontoDestino:
+                    typeof doacaoParaEditar.pontoSelecionado === 'object' && doacaoParaEditar.pontoSelecionado !== null
+                        ? doacaoParaEditar.pontoSelecionado.nome
+                        : typeof doacaoParaEditar.pontoSelecionado === 'string'
+                        ? doacaoParaEditar.pontoSelecionado
+                        : '',
+            });
+        } else {
+            reset({
+                tipoItem: '',
+                quantidade: undefined as unknown as number,
+                pontoDestino: '',
+            });
+        }
+    }, [doacaoParaEditar, reset]);
+
     const onSubmit = async (data: DoacaoFormData) => {
         try {
-            const novaDoacao: Doacao = {
-                id: Date.now(),
-                tipoItem: data.tipoItem.trim(),
-                qtdItem: data.quantidade,
-                pontoSelecionado: {
-                    id: 0,
-                    nome: data.pontoDestino.trim(),
-                    endereco: '',
-                    diasHorarios: '',
-                    funcionamento: '',
-                },
-                criadoEm: new Date().toISOString(),
-            };
-
-            const doacoesSalvas = await AsyncStorage.getItem(STORAGE_KEY_LIST);
-            const listaAtual: Doacao[] = doacoesSalvas ? JSON.parse(doacoesSalvas) : [];
-            const novaLista = [novaDoacao, ...listaAtual];
-            await AsyncStorage.setItem(STORAGE_KEY_LIST, JSON.stringify(novaLista));
-            reset();
-            onSuccess?.();
-
-            Alert.alert(
-                'Doação Registrada com Sucesso!',
-                `Item: ${novaDoacao.tipoItem}\nQuantidade: ${novaDoacao.qtdItem}\nDestino: ${novaDoacao.pontoSelecionado.nome}`
-            );
+            if (doacaoParaEditar) {
+                const doacaoAtualizada = await editarDoacao(doacaoParaEditar.id, data);
+                Alert.alert('Sucesso', 'Doação atualizada com sucesso!');
+                onSuccess?.(doacaoAtualizada);
+            } else {
+                const novaDoacao = await criarDoacao(data);
+                reset();
+                Alert.alert(
+                    'Doação Registrada com Sucesso!',
+                    `Item: ${novaDoacao.tipoItem}\nQuantidade: ${novaDoacao.qtdItem}\nDestino: ${
+                        typeof novaDoacao.pontoSelecionado === 'object'
+                            ? novaDoacao.pontoSelecionado.nome
+                            : novaDoacao.pontoSelecionado
+                    }`
+                );
+                onSuccess?.(novaDoacao);
+            }
         } catch (error) {
-            console.error('Erro ao registrar doação:', error);
-            Alert.alert('Erro', 'Não foi possível registrar a doação.');
+            console.error('Erro ao salvar doação:', error);
+            Alert.alert(
+                'Erro',
+                doacaoParaEditar
+                    ? 'Não foi possível atualizar a doação.'
+                    : 'Não foi possível registrar a doação.'
+            );
         }
     };
 
@@ -149,7 +168,9 @@ export const DoacaoScreen = ({ onSuccess }: { onSuccess?: () => void }) => {
                 onPress={handleSubmit(onSubmit)}
                 activeOpacity={0.8}
             >
-                <Text style={styles.buttonSubmitText}>Registrar Doação</Text>
+                <Text style={styles.buttonSubmitText}>
+                    {isEditing ? 'Salvar Alterações' : 'Registrar Doação'}
+                </Text>
             </TouchableOpacity>
         </View>
     );

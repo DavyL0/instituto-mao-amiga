@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -9,12 +10,57 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { DoacaoScreen } from '../components/FormularioDoacao';
-import { RootStackParamList } from '../types/types';
+import { Doacao, RootStackParamList } from '../types/types';
 import { theme } from '../theme/theme';
+import { obterDoacaoPorId } from '../services/doacoesService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TelaFormularioDoacao'>;
 
-const DoacaoFormScreen = () => {
+const DoacaoFormScreen = ({ route, navigation }: Props) => {
+    const doacaoId = route.params?.doacaoId;
+    const [doacaoParaEditar, setDoacaoParaEditar] = useState<Doacao | null>(null);
+    const [loading, setLoading] = useState<boolean>(Boolean(doacaoId));
+
+    useEffect(() => {
+        let isMounted = true;
+        if (doacaoId) {
+            obterDoacaoPorId(doacaoId)
+                .then((item) => {
+                    if (isMounted) {
+                        setDoacaoParaEditar(item || null);
+                        setLoading(false);
+                    }
+                })
+                .catch(() => {
+                    if (isMounted) {
+                        setLoading(false);
+                    }
+                });
+        }
+        return () => {
+            isMounted = false;
+        };
+    }, [doacaoId]);
+
+    const handleSuccess = () => {
+        if (doacaoId && navigation.canGoBack()) {
+            navigation.goBack();
+        } else {
+            navigation.navigate('TelaDoacoes');
+        }
+    };
+
+    if (loading) {
+        return (
+            <View style={styles.centerContainer}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={styles.loadingText}>Carregando dados da doação...</Text>
+            </View>
+        );
+    }
+
+    const isEditing = Boolean(doacaoId);
+
     return (
         <KeyboardAvoidingView
             style={styles.container}
@@ -26,15 +72,22 @@ const DoacaoFormScreen = () => {
             >
                 {/* Cabeçalho da Tela */}
                 <View style={styles.header}>
-                    <Text style={styles.title}>Registrar Doação</Text>
+                    <Text style={styles.title}>
+                        {isEditing ? 'Editar Doação' : 'Registrar Doação'}
+                    </Text>
                     <Text style={styles.subtitle}>
-                        Preencha as informações do item para cadastrar no sistema.
+                        {isEditing
+                            ? 'Atualize as informações da doação selecionada.'
+                            : 'Preencha as informações do item para cadastrar no sistema.'}
                     </Text>
                 </View>
 
-                {/* Formulário e Histórico dentro do Card */}
+                {/* Formulário dentro do Card */}
                 <View style={styles.card}>
-                    <DoacaoScreen />
+                    <DoacaoScreen
+                        doacaoParaEditar={doacaoParaEditar}
+                        onSuccess={handleSuccess}
+                    />
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
@@ -47,6 +100,17 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: theme.colors.background,
+    },
+    centerContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: theme.colors.background,
+    },
+    loadingText: {
+        marginTop: theme.spacing.md,
+        fontSize: theme.fontSize.md,
+        color: theme.colors.textSecondary,
     },
     scrollContainer: {
         padding: theme.spacing['2xl'],

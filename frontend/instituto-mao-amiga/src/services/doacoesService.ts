@@ -3,6 +3,12 @@ import { Doacao } from '../types/types';
 
 export const STORAGE_KEY_LIST = '@institutomaoamiga:doacoes';
 
+export type DoacaoFormData = {
+    tipoItem: string;
+    quantidade: number;
+    pontoDestino: string;
+};
+
 export async function carregarHistorico(): Promise<Doacao[]> {
     try {
         const doacoesSalvas = await AsyncStorage.getItem(STORAGE_KEY_LIST);
@@ -33,6 +39,68 @@ export async function obterDoacaoPorId(id: number): Promise<Doacao | undefined> 
     return lista.find((item) => item.id === id);
 }
 
+export async function criarDoacao(data: DoacaoFormData): Promise<Doacao> {
+    try {
+        const novaDoacao: Doacao = {
+            id: Date.now(),
+            tipoItem: data.tipoItem.trim(),
+            qtdItem: data.quantidade,
+            pontoSelecionado: {
+                id: 0,
+                nome: data.pontoDestino.trim(),
+                endereco: '',
+                diasHorarios: '',
+                funcionamento: '',
+            },
+            criadoEm: new Date().toISOString(),
+        };
+
+        const historico = await carregarHistorico();
+        const novaLista = [novaDoacao, ...historico];
+        await AsyncStorage.setItem(STORAGE_KEY_LIST, JSON.stringify(novaLista));
+
+        return novaDoacao;
+    } catch (error) {
+        console.error('Erro ao criar doação:', error);
+        throw error;
+    }
+}
+
+export async function editarDoacao(id: number, data: DoacaoFormData): Promise<Doacao> {
+    try {
+        const historico = await carregarHistorico();
+        let doacaoAtualizada: Doacao | undefined;
+
+        const novaLista = historico.map((item) => {
+            if (item.id === id) {
+                doacaoAtualizada = {
+                    ...item,
+                    tipoItem: data.tipoItem.trim(),
+                    qtdItem: data.quantidade,
+                    pontoSelecionado: {
+                        ...(typeof item.pontoSelecionado === 'object' && item.pontoSelecionado !== null
+                            ? item.pontoSelecionado
+                            : { id: 0, endereco: '', diasHorarios: '', funcionamento: '' }),
+                        nome: data.pontoDestino.trim(),
+                    },
+                };
+                return doacaoAtualizada;
+            }
+            return item;
+        });
+
+        if (!doacaoAtualizada) {
+            throw new Error(`Doação com ID ${id} não encontrada para edição.`);
+        }
+
+        await AsyncStorage.setItem(STORAGE_KEY_LIST, JSON.stringify(novaLista));
+        return doacaoAtualizada;
+    } catch (error) {
+        console.error('Erro ao editar doação:', error);
+        throw error;
+    }
+}
+
 export async function excluirDoacao(id: number): Promise<void> {
     try {
         const historico = await carregarHistorico();
@@ -40,5 +108,6 @@ export async function excluirDoacao(id: number): Promise<void> {
         await AsyncStorage.setItem(STORAGE_KEY_LIST, JSON.stringify(novaLista));
     } catch (error) {
         console.error('Erro ao excluir doação:', error);
+        throw error;
     }
 }
