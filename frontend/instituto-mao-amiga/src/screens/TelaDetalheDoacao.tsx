@@ -8,8 +8,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { theme } from '../theme/theme';
 import { Doacao, RootStackParamList } from '../types/types';
 import { carregarHistorico, getTotalHistorico, excluirDoacao } from '../services/doacoesService';
@@ -19,10 +19,12 @@ type Props = NativeStackScreenProps<RootStackParamList, 'TelaDetalheDoacao'>;
 function DoacaoDetalhe({
     doacao,
     totalGeral,
+    onEditar,
     onExcluir,
 }: {
     doacao: Doacao;
     totalGeral?: { totalRegistros: number; totalItens: number };
+    onEditar: () => void;
     onExcluir: () => void;
 }) {
     const destinoNome =
@@ -65,6 +67,14 @@ function DoacaoDetalhe({
                     </Text>
                 </>
             )}
+
+            <TouchableOpacity
+                style={styles.btnEditar}
+                onPress={onEditar}
+                activeOpacity={0.8}
+            >
+                <Text style={styles.btnEditarText}>Editar Doação</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
                 style={styles.btnExcluir}
@@ -164,6 +174,7 @@ function TelaDetalheDoacao({ route, navigation }: Props) {
             <DoacaoDetalhe
                 doacao={doacao}
                 totalGeral={totalGeral}
+                onEditar={() => navigation.navigate('TelaFormularioDoacao', { doacaoId: doacao.id })}
                 onExcluir={() => handleExcluirDoacao(doacao)}
             />
         </ScrollView>
@@ -236,13 +247,28 @@ const styles = StyleSheet.create({
     },
     btnExcluir: {
         backgroundColor: theme.colors.danger,
-        borderRadius: theme.borderRadius.md,
+        borderRadius: 7,
         paddingVertical: theme.spacing.md,
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: theme.spacing['2xl'],
     },
     btnExcluirText: {
+        color: theme.colors.textWhite,
+        fontWeight: 'bold',
+        fontSize: theme.fontSize.md,
+    },
+    btnEditar: {
+        backgroundColor: theme.colors.primary,
+        fontWeight: 'bold',
+        fontSize: theme.fontSize.md,
+        borderRadius: 7,
+        paddingVertical: theme.spacing.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: theme.spacing['2xl'],
+    },
+    btnEditarText: {
         color: theme.colors.textWhite,
         fontWeight: 'bold',
         fontSize: theme.fontSize.md,
