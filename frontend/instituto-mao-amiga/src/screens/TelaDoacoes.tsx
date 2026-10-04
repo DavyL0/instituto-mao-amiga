@@ -1,8 +1,9 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
     FlatList,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
@@ -17,6 +18,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'TelaDoacoes'>;
 
 function TelaDoacoes({ navigation }: Props) {
     const [historico, setHistorico] = useState<Doacao[]>([]);
+    const [busca, setBusca] = useState('');
     const [totalGeral, setTotalGeral] = useState({ totalRegistros: 0, totalItens: 0 });
 
     const buscarDados = async () => {
@@ -31,6 +33,14 @@ function TelaDoacoes({ navigation }: Props) {
             buscarDados();
         }, [])
     );
+
+    const historicoFiltrado = useMemo(() => {
+        if (!busca.trim()) return historico;
+        const termo = busca.trim().toLowerCase();
+        return historico.filter((doacao) =>
+            doacao.tipoItem?.toLowerCase().includes(termo)
+        );
+    }, [historico, busca]);
 
     const renderItem = ({ item }: { item: Doacao }) => {
         const destinoNome =
@@ -75,22 +85,36 @@ function TelaDoacoes({ navigation }: Props) {
         );
     };
 
-    const renderEmpty = () => (
-        <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>📦</Text>
-            <Text style={styles.emptyTitle}>Nenhuma doação cadastrada</Text>
-            <Text style={styles.emptyText}>
-                Registre suas doações pelo formulário para visualizá-las aqui.
-            </Text>
-            <TouchableOpacity
-                style={styles.emptyButton}
-                onPress={() => navigation.navigate('TelaFormularioDoacao')}
-                activeOpacity={0.8}
-            >
-                <Text style={styles.emptyButtonText}>Cadastrar Doação</Text>
-            </TouchableOpacity>
-        </View>
-    );
+    const renderEmpty = () => {
+        if (busca.trim()) {
+            return (
+                <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyIcon}>🔍</Text>
+                    <Text style={styles.emptyTitle}>Nenhuma doação encontrada</Text>
+                    <Text style={styles.emptyText}>
+                        Nenhum item corresponde ao termo "{busca}".
+                    </Text>
+                </View>
+            );
+        }
+
+        return (
+            <View style={styles.emptyContainer}>
+                <Text style={styles.emptyIcon}>📦</Text>
+                <Text style={styles.emptyTitle}>Nenhuma doação cadastrada</Text>
+                <Text style={styles.emptyText}>
+                    Registre suas doações pelo formulário para visualizá-las aqui.
+                </Text>
+                <TouchableOpacity
+                    style={styles.emptyButton}
+                    onPress={() => navigation.navigate('TelaFormularioDoacao')}
+                    activeOpacity={0.8}
+                >
+                    <Text style={styles.emptyButtonText}>Cadastrar Doação</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    };
 
     return (
         <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -112,8 +136,18 @@ function TelaDoacoes({ navigation }: Props) {
                 </TouchableOpacity>
             </View>
 
+            <TextInput
+                style={styles.inputBusca}
+                placeholder="Buscar por tipo de item..."
+                placeholderTextColor={theme.colors.placeholder}
+                value={busca}
+                onChangeText={setBusca}
+                autoCorrect={false}
+                clearButtonMode="while-editing"
+            />
+
             <FlatList
-                data={historico}
+                data={historicoFiltrado}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={renderItem}
                 ListEmptyComponent={renderEmpty}
@@ -163,6 +197,19 @@ const styles = StyleSheet.create({
         color: theme.colors.textWhite,
         fontWeight: 'bold',
         fontSize: theme.fontSize.sm,
+    },
+    inputBusca: {
+        backgroundColor: theme.colors.cardBackground,
+        color: theme.colors.text,
+        height: 50,
+        borderRadius: theme.borderRadius.sm,
+        paddingHorizontal: theme.spacing['2xl'],
+        fontSize: theme.fontSize.xl,
+        marginHorizontal: theme.spacing['2xl'],
+        marginTop: theme.spacing.md,
+        marginBottom: theme.spacing.sm,
+        borderWidth: 1,
+        borderColor: theme.colors.cardBorder,
     },
     scrollArea: {
         flex: 1,

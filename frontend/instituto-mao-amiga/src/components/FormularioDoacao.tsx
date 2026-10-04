@@ -1,16 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TextInputProps, TouchableOpacity, View } from 'react-native';
 import { Controller, useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { theme } from '../theme/theme';
-import { Doacao } from '../types/types';
+import { Doacao, TipoItem } from '../types/types';
 import { criarDoacao, editarDoacao, DoacaoFormData } from '../services/doacoesService';
 
 const fieldsValidationSchema = yup.object().shape({
     tipoItem: yup
-        .string()
-        .required('O tipo de item não pode ser vazio'),
+        .mixed<TipoItem>()
+        .oneOf(Object.values(TipoItem), 'Selecione um tipo de item válido')
+        .required('O tipo de item é obrigatório'),
     quantidade: yup
         .number()
         .typeError('Digite um número válido')
@@ -39,6 +40,89 @@ const TextField = ({ label, error, ...inputProps }: TextFieldProps) => (
     </View>
 );
 
+type SelectDropdownProps = {
+    label: string;
+    options: TipoItem[];
+    value?: TipoItem;
+    onSelect: (value: TipoItem) => void;
+    placeholder?: string;
+    error?: string;
+};
+
+const SelectDropdown = ({
+    label,
+    options,
+    value,
+    onSelect,
+    placeholder = 'Selecione uma opção',
+    error,
+}: SelectDropdownProps) => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <View style={styles.container}>
+            <Text style={styles.label}>{label}</Text>
+            <TouchableOpacity
+                activeOpacity={0.8}
+                style={[
+                    styles.selectTrigger,
+                    error ? styles.inputError : null,
+                    isOpen && styles.selectTriggerOpen,
+                ]}
+                onPress={() => setIsOpen((prev) => !prev)}
+            >
+                <Text
+                    numberOfLines={1}
+                    style={[
+                        styles.selectTriggerText,
+                        !value && styles.placeholderText,
+                    ]}
+                >
+                    {value || placeholder}
+                </Text>
+                <Text style={styles.chevron}>{isOpen ? '▲' : '▼'}</Text>
+            </TouchableOpacity>
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            {isOpen && (
+                <View style={styles.dropdownContainer}>
+                    {options.map((option, index) => {
+                        const isSelected = value === option;
+                        const isLast = index === options.length - 1;
+                        return (
+                            <TouchableOpacity
+                                key={option}
+                                activeOpacity={0.7}
+                                style={[
+                                    styles.dropdownItem,
+                                    isLast && styles.dropdownItemLast,
+                                    isSelected && styles.dropdownItemSelected,
+                                ]}
+                                onPress={() => {
+                                    onSelect(option);
+                                    setIsOpen(false);
+                                }}
+                            >
+                                <Text
+                                    style={[
+                                        styles.dropdownItemText,
+                                        isSelected && styles.dropdownItemTextSelected,
+                                    ]}
+                                >
+                                    {option}
+                                </Text>
+                                {isSelected && (
+                                    <Text style={styles.checkmark}>✓</Text>
+                                )}
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+            )}
+        </View>
+    );
+};
+
 type DoacaoScreenProps = {
     doacaoParaEditar?: Doacao | null;
     onSuccess?: (doacaoSalva?: Doacao) => void;
@@ -55,7 +139,7 @@ export const DoacaoScreen = ({ doacaoParaEditar, onSuccess }: DoacaoScreenProps)
     } = useForm<DoacaoFormData>({
         resolver: yupResolver(fieldsValidationSchema),
         defaultValues: {
-            tipoItem: '',
+            tipoItem: undefined,
             quantidade: undefined as unknown as number,
             pontoDestino: '',
         },
@@ -75,7 +159,7 @@ export const DoacaoScreen = ({ doacaoParaEditar, onSuccess }: DoacaoScreenProps)
             });
         } else {
             reset({
-                tipoItem: '',
+                tipoItem: undefined,
                 quantidade: undefined as unknown as number,
                 pontoDestino: '',
             });
@@ -117,13 +201,13 @@ export const DoacaoScreen = ({ doacaoParaEditar, onSuccess }: DoacaoScreenProps)
             <Controller
                 control={control}
                 name="tipoItem"
-                render={({ field: { onChange, onBlur, value } }) => (
-                    <TextField
+                render={({ field: { onChange, value } }) => (
+                    <SelectDropdown
                         label="Tipo do Item"
-                        placeholder="Ex: Alimentos não perecíveis"
-                        onBlur={onBlur}
-                        onChangeText={onChange}
+                        placeholder="Selecione o tipo do item"
+                        options={Object.values(TipoItem)}
                         value={value}
+                        onSelect={onChange}
                         error={errors.tipoItem?.message}
                     />
                 )}
@@ -206,6 +290,70 @@ const styles = StyleSheet.create({
         color: theme.colors.danger,
         fontSize: theme.fontSize.xs,
         marginTop: theme.spacing.xs,
+    },
+    selectTrigger: {
+        backgroundColor: theme.colors.background,
+        height: 46,
+        borderRadius: theme.borderRadius.lg,
+        paddingHorizontal: theme.spacing.md,
+        borderWidth: 1,
+        borderColor: theme.colors.cardBorder,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    selectTriggerOpen: {
+        borderColor: theme.colors.primary,
+    },
+    selectTriggerText: {
+        fontSize: theme.fontSize.md,
+        color: theme.colors.text,
+        flex: 1,
+        marginRight: theme.spacing.md,
+    },
+    placeholderText: {
+        color: theme.colors.placeholder,
+    },
+    chevron: {
+        fontSize: theme.fontSize.xs,
+        color: theme.colors.textSecondary,
+    },
+    dropdownContainer: {
+        backgroundColor: theme.colors.background,
+        borderColor: theme.colors.cardBorder,
+        borderWidth: 1,
+        borderRadius: theme.borderRadius.lg,
+        marginTop: theme.spacing.xs,
+        overflow: 'hidden',
+    },
+    dropdownItem: {
+        paddingHorizontal: theme.spacing.md,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.cardBorder,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    dropdownItemLast: {
+        borderBottomWidth: 0,
+    },
+    dropdownItemSelected: {
+        backgroundColor: theme.colors.cardBackground,
+    },
+    dropdownItemText: {
+        color: theme.colors.textSecondary,
+        fontSize: theme.fontSize.md,
+        flex: 1,
+    },
+    dropdownItemTextSelected: {
+        color: theme.colors.primary,
+        fontWeight: 'bold',
+    },
+    checkmark: {
+        color: theme.colors.primary,
+        fontWeight: 'bold',
+        fontSize: theme.fontSize.md,
     },
     buttonSubmit: {
         backgroundColor: theme.colors.primary,
