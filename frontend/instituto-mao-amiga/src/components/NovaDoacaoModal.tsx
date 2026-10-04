@@ -1,4 +1,4 @@
-import {Doacao, Ponto} from "../types/types";
+import {Doacao, Ponto, TipoItem} from "../types/types";
 import {
     KeyboardAvoidingView,
     Modal,
@@ -34,7 +34,8 @@ const STORAGE_KEY_DRAFT = '@institutomaoamiga:draft_doacao';
 export function NovaDoacaoModal(
     {visible, onClose, onSave}: NovoPontoModalProps
 ) {
-    const [tipoItem, setTipoItem] = useState('');
+    const [tipoItem, setTipoItem] = useState<TipoItem | ''>('');
+    const [tipoDropdownAberto, setTipoDropdownAberto] = useState(false);
     const [qtdItem, setQtdItem] = useState('');
     const [pontoSelecionado, setPontoSelecionado] = useState<Ponto | null>(null);
     const [dropdownAberto, setDropdownAberto] = useState(false);
@@ -43,7 +44,7 @@ export function NovaDoacaoModal(
     function validar(): boolean {
         const novosErros: ErrosForm = {};
 
-        if (!tipoItem.trim()) {
+        if (!tipoItem) {
             novosErros.tipoItem = 'O tipo do item é obrigatório.';
         }
 
@@ -71,7 +72,7 @@ export function NovaDoacaoModal(
 
         const novaDoacao: Doacao = {
             id: Date.now(),
-            tipoItem: tipoItem.trim(),
+            tipoItem: tipoItem,
             qtdItem: qtdNumerica,
             pontoSelecionado: pontoSelecionado!,
             criadoEm: new Date().toISOString()
@@ -132,6 +133,7 @@ export function NovaDoacaoModal(
 
     function limparFormulario() {
         setTipoItem('');
+        setTipoDropdownAberto(false);
         setQtdItem('');
         setPontoSelecionado(null);
         setErros({});
@@ -179,25 +181,65 @@ export function NovaDoacaoModal(
                     >
                         <View style={styles.formGroup}>
                             <Text style={styles.inputLabel}>Item Doado*</Text>
-                            <TextInput
+                            <TouchableOpacity
+                                activeOpacity={0.8}
                                 style={[
-                                    styles.modalInput,
-                                    erros.tipoItem ? styles.inputError : null,
+                                    styles.selectTrigger,
+                                    erros.tipoItem ? styles.inputError : null
                                 ]}
-                                placeholder="Ex: Blusa de Frio"
-                                placeholderTextColor={theme.colors.placeholder}
-                                value={tipoItem}
-                                onChangeText={(text: string) => {
-                                    setTipoItem(text);
-                                    if (erros.tipoItem) {
-                                        setErros((prev) => ({
-                                            ...prev,
-                                            tipoItem: undefined
-                                        }));
-                                    }
+                                onPress={() => {
+                                    setTipoDropdownAberto(prev => !prev);
+                                    if (dropdownAberto) setDropdownAberto(false);
                                 }}
-                            />
+                            >
+                                <Text
+                                    numberOfLines={1}
+                                    style={[
+                                        styles.selectTriggerText,
+                                        !tipoItem && styles.placeholderText
+                                    ]}
+                                >
+                                    {tipoItem || 'Selecione o tipo do item'}
+                                </Text>
+                            </TouchableOpacity>
                             {erros.tipoItem ? <Text style={styles.errorText}>{erros.tipoItem}</Text> : null}
+                            {tipoDropdownAberto && (
+                                <View style={styles.dropdownContainer}>
+                                    <ScrollView style={styles.dropdownScroll} nestedScrollEnabled={true}>
+                                        {Object.values(TipoItem).map(itemTipo => {
+                                            const selecionado = tipoItem === itemTipo;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={itemTipo}
+                                                    style={[
+                                                        styles.dropdownItem,
+                                                        selecionado && styles.dropdownItemSelected
+                                                    ]}
+                                                    onPress={() => {
+                                                        setTipoItem(itemTipo);
+                                                        setTipoDropdownAberto(false);
+                                                        if (erros.tipoItem) {
+                                                            setErros(prev => ({
+                                                                ...prev,
+                                                                tipoItem: undefined
+                                                            }));
+                                                        }
+                                                    }}
+                                                >
+                                                    <Text
+                                                        style={[
+                                                            styles.dropdownItemText,
+                                                            selecionado && styles.dropdownItemTextSelected
+                                                        ]}
+                                                    >
+                                                        {itemTipo}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </ScrollView>
+                                </View>
+                            )}
                         </View>
                         <View style={styles.formGroup}>
                             <Text style={styles.inputLabel}>Quantidade*</Text>
@@ -230,7 +272,10 @@ export function NovaDoacaoModal(
                                     styles.selectTrigger,
                                     erros.ponto ? styles.inputError : null
                                 ]}
-                                onPress={() => setDropdownAberto(prev => !prev)}
+                                onPress={() => {
+                                    setDropdownAberto(prev => !prev);
+                                    if (tipoDropdownAberto) setTipoDropdownAberto(false);
+                                }}
                             >
                                 <Text
                                     numberOfLines={1}
