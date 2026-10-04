@@ -8,7 +8,7 @@ export type Ponto = {
 
 export type Doacao = {
     id: number;
-    tipoItem: string;
+    tipoItem: TipoItem;
     qtdItem: number;
     pontoSelecionado: Ponto;
     criadoEm: string;
@@ -21,3 +21,10 @@ export type RootStackParamList = {
     TelaDetalheDoacao: { doacaoId: number };
     TelaFormularioDoacao: {doacaoId?: number} | undefined;
 };
+
+export enum TipoItem {
+    Roupas = 'Roupas',
+    Alimentos = 'Alimentos',
+    Brinquedos = 'Brinquedos',
+    Outros = 'Outros',
+}

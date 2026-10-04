@@ -1,10 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Doacao } from '../types/types';
+import { Doacao, TipoItem } from '../types/types';
 
 export const STORAGE_KEY_LIST = '@institutomaoamiga:doacoes';
 
 export type DoacaoFormData = {
-    tipoItem: string;
+    tipoItem: TipoItem;
     quantidade: number;
     pontoDestino: string;
 };
@@ -43,7 +43,7 @@ export async function criarDoacao(data: DoacaoFormData): Promise<Doacao> {
     try {
         const novaDoacao: Doacao = {
             id: Date.now(),
-            tipoItem: data.tipoItem.trim(),
+            tipoItem: data.tipoItem,
             qtdItem: data.quantidade,
             pontoSelecionado: {
                 id: 0,
@@ -75,7 +75,7 @@ export async function editarDoacao(id: number, data: DoacaoFormData): Promise<Do
             if (item.id === id) {
                 doacaoAtualizada = {
                     ...item,
-                    tipoItem: data.tipoItem.trim(),
+                    tipoItem: data.tipoItem,
                     qtdItem: data.quantidade,
                     pontoSelecionado: {
                         ...(typeof item.pontoSelecionado === 'object' && item.pontoSelecionado !== null
