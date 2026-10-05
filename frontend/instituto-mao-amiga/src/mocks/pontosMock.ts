@@ -1,4 +1,4 @@
-import {Ponto} from "../types/produto";
+import {Ponto} from "../types/types";
 
 export const pontosMock: Ponto[] = [
     {
