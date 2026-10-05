@@ -155,15 +155,6 @@ function TelaListaPontos({navigation}: Props) {
                     <Text style={styles.taskBarIcon}>🎁</Text>
                     <Text style={styles.taskBarLabel}>Doações</Text>
                 </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.taskBarItem}
-                    onPress={() => navigation.navigate('TelaFormularioDoacao')}
-                    activeOpacity={0.7}
-                >
-                    <Text style={styles.taskBarIcon}>📝</Text>
-                    <Text style={styles.taskBarLabel}>Cadastrar</Text>
-                </TouchableOpacity>
             </View>
         </SafeAreaView>
     );
