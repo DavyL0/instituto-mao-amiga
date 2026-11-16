@@ -14,9 +14,9 @@ public class OpenApiConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Instituto Mão Amiga - API de Pontos de Coleta e Distribuição")
+                        .title("Instituto Mão Amiga - API de Pontos de Coleta, Distribuição e Doações")
                         .version("1.0.0")
-                        .description("API REST para gerenciamento e consulta de pontos de coleta e distribuição do Instituto Mão Amiga em Goiânia")
+                        .description("API REST para gerenciamento e consulta de pontos de coleta, distribuição e doações do Instituto Mão Amiga em Goiânia")
                         .contact(new Contact()
                                 .name("Instituto Mão Amiga")
                                 .email("contato@maoamiga.org")
