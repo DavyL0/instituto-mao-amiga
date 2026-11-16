@@ -535,3 +535,21 @@ src/main/java/com/davy/backend/
     └── exception/
         └── ResourceNotFoundException.java # Exceção customizada para 404
 ```
+
+### Integridade das doações
+
+O cadastro e a atualização de doações recebem `tipoItem`, `quantidade` e
+`pontoDestinoId` (UUID de um ponto existente). A resposta inclui `pontoDestinoId`
+e `pontoDestino` com o nome atual do ponto. Um destino inexistente retorna 404;
+a exclusão de um ponto com doações retorna 409. Os tipos de ponto aceitos são
+`coleta` e `distribuição`, e os campos de texto aceitam até 255 caracteres.
+
+Para bancos antigos com o destino salvo como texto, faça backup e execute
+[scripts/migrate-doacao-destino.sql](scripts/migrate-doacao-destino.sql) com a
+aplicação parada, antes de iniciar esta versão. Confira primeiro a consulta de
+diagnóstico: nomes ausentes ou duplicados precisam ser resolvidos explicitamente.
+Bancos novos recebem a associação pelo Hibernate. O script não é executado
+automaticamente e mantém o texto antigo como histórico.
+
+Os testes usam exclusivamente H2 em memória, configurado em
+`src/test/resources/application.properties`; o banco local em arquivo não é usado.

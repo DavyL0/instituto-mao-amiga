@@ -4,6 +4,9 @@ import com.davy.backend.dto.PontoRequestDTO;
 import com.davy.backend.dto.PontoResponseDTO;
 import com.davy.backend.entity.Ponto;
 import com.davy.backend.repository.PontoRepository;
+import com.davy.backend.repository.DoacaoRepository;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import com.davy.backend.service.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,6 +22,7 @@ import java.util.UUID;
 public class PontoService {
 
     private final PontoRepository pontoRepository;
+    private final DoacaoRepository doacaoRepository;
 
     @Transactional(readOnly = true)
     public List<PontoResponseDTO> findAll() {
@@ -69,6 +73,10 @@ public class PontoService {
         if (!pontoRepository.existsById(id)) {
             throw new ResourceNotFoundException("Ponto não encontrado com o ID: " + id);
         }
+        if (doacaoRepository.existsByPontoDestinoId(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "O ponto possui doações vinculadas");
+        }
         pontoRepository.deleteById(id);
+        pontoRepository.flush();
     }
 }
