@@ -1,9 +1,22 @@
+export type TipoPonto = 'coleta' | 'distribuição';
+
 export type Ponto = {
     id: number;
     nome: string;
     endereco: string;
-    diasHorarios: string;
-    funcionamento: string;
+    bairro?: string;
+    horario?: string;
+    tipo?: TipoPonto | string;
+    diasHorarios?: string;
+    funcionamento?: string;
+};
+
+export type PontoFormData = {
+    nome: string;
+    endereco: string;
+    bairro: string;
+    horario: string;
+    tipo: TipoPonto | string;
 };
 
 export type Doacao = {
@@ -19,7 +32,8 @@ export type RootStackParamList = {
     TelaDoacoes: undefined;
     TelaDetalhePonto: { pontoId: number };
     TelaDetalheDoacao: { doacaoId: number };
-    TelaFormularioDoacao: {doacaoId?: number} | undefined;
+    TelaFormularioDoacao: { doacaoId?: number } | undefined;
+    TelaFormularioPonto: { pontoId?: number } | undefined;
 };
 
 export enum TipoItem {

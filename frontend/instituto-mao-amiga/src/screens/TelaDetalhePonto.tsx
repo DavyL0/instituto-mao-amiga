@@ -1,34 +1,79 @@
-import React, {useCallback, useEffect, useState} from 'react';
-import {ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
-import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {Ponto, RootStackParamList} from "../types/types";
-import {theme} from "../theme/theme";
-import * as pontosService from "../services/pontosService";
-import {ApiError} from "../services/api";
+import React, { useCallback, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
+import { Ponto, RootStackParamList } from '../types/types';
+import { theme } from '../theme/theme';
+import * as pontosService from '../services/pontosService';
+import { ApiError } from '../services/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TelaDetalhePonto'>;
 
-function PontoDetalhe({ponto}: { ponto: Ponto }) {
+function PontoDetalhe({
+    ponto,
+    onEditar,
+    onExcluir,
+}: {
+    ponto: Ponto;
+    onEditar: () => void;
+    onExcluir: () => void;
+}) {
+    const horarioExibicao = ponto.horario || ponto.diasHorarios || 'Não informado';
+    const tipoExibicao = ponto.tipo
+        ? ponto.tipo.charAt(0).toUpperCase() + ponto.tipo.slice(1).toLowerCase()
+        : ponto.funcionamento || 'Não informado';
+
     return (
         <View style={styles.cardDetalhe}>
             <Text style={styles.nome}>{ponto.nome}</Text>
 
-            <View style={styles.divisor}/>
+            <View style={styles.divisor} />
 
             <Text style={styles.label}>Endereço</Text>
-            <Text style={styles.endereco}>{ponto.endereco}</Text>
+            <Text style={styles.valor}>{ponto.endereco}</Text>
 
-            <Text style={styles.label}>Dias e Horários</Text>
-            <Text style={styles.diasHorarios}>{ponto.diasHorarios}</Text>
+            {ponto.bairro ? (
+                <>
+                    <Text style={styles.label}>Bairro</Text>
+                    <Text style={styles.valor}>{ponto.bairro}</Text>
+                </>
+            ) : null}
 
-            <Text style={styles.label}>Atendimento</Text>
-            <Text style={styles.funcionamento}>{ponto.funcionamento}</Text>
+            <Text style={styles.label}>Horário</Text>
+            <Text style={styles.valor}>{horarioExibicao}</Text>
+
+            <Text style={styles.label}>Tipo</Text>
+            <Text style={styles.tipoValor}>{tipoExibicao}</Text>
+
+            <TouchableOpacity
+                style={styles.btnEditar}
+                onPress={onEditar}
+                activeOpacity={0.8}
+            >
+                <Text style={styles.btnEditarText}>Editar Ponto</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+                style={styles.btnExcluir}
+                onPress={onExcluir}
+                activeOpacity={0.8}
+            >
+                <Text style={styles.btnExcluirText}>Excluir Ponto</Text>
+            </TouchableOpacity>
         </View>
     );
 }
 
-function TelaDetalhePonto({route, navigation}: Props) {
-    const {pontoId} = route.params;
+function TelaDetalhePonto({ route, navigation }: Props) {
+    const { pontoId } = route.params;
     const [ponto, setPonto] = useState<Ponto | null>(null);
     const [carregando, setCarregando] = useState(true);
     const [naoEncontrado, setNaoEncontrado] = useState(false);
@@ -52,16 +97,68 @@ function TelaDetalhePonto({route, navigation}: Props) {
             } else if (err?.status === 404) {
                 setNaoEncontrado(true);
             } else {
-                setErro(err?.message || 'Não foi possível carregar os detalhes do ponto. Verifique sua conexão e se a API está online.');
+                setErro(
+                    err?.message ||
+                        'Não foi possível carregar os detalhes do ponto. Verifique sua conexão e se a API está online.'
+                );
             }
         } finally {
             setCarregando(false);
         }
     }, [pontoId]);
 
-    useEffect(() => {
-        carregarPonto();
-    }, [carregarPonto]);
+    useFocusEffect(
+        useCallback(() => {
+            carregarPonto();
+        }, [carregarPonto])
+    );
+
+    const handleExcluirPonto = (item: Ponto) => {
+        Alert.alert(
+            'Excluir Ponto',
+            `Deseja realmente excluir o ponto "${item.nome}"?`,
+            [
+                {
+                    text: 'Cancelar',
+                    style: 'cancel',
+                },
+                {
+                    text: 'Excluir',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await pontosService.excluir(item.id);
+                            Alert.alert('Sucesso', 'Ponto excluído com sucesso!', [
+                                {
+                                    text: 'OK',
+                                    onPress: () => {
+                                        if (navigation.canGoBack()) {
+                                            navigation.goBack();
+                                        } else {
+                                            navigation.navigate('TelaListaPontos');
+                                        }
+                                    },
+                                },
+                            ]);
+                        } catch (error: any) {
+                            console.error('Erro ao excluir ponto:', error);
+                            let msg = 'Não foi possível excluir o ponto. Verifique sua conexão e se a API está online.';
+                            if (error instanceof ApiError) {
+                                if (error.status === 0) {
+                                    msg = 'Não foi possível conectar ao servidor. Verifique se a API está ligada.';
+                                } else {
+                                    msg = error.message || msg;
+                                }
+                            } else if (error?.message) {
+                                msg = error.message;
+                            }
+                            Alert.alert('Erro', msg);
+                        }
+                    },
+                },
+            ]
+        );
+    };
 
     if (carregando) {
         return (
@@ -115,7 +212,11 @@ function TelaDetalhePonto({route, navigation}: Props) {
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.detalheScroll}>
-            <PontoDetalhe ponto={ponto}/>
+            <PontoDetalhe
+                ponto={ponto}
+                onEditar={() => navigation.navigate('TelaFormularioPonto', { pontoId: ponto.id })}
+                onExcluir={() => handleExcluirPonto(ponto)}
+            />
         </ScrollView>
     );
 }
@@ -155,29 +256,51 @@ const styles = StyleSheet.create({
     divisor: {
         height: 1,
         backgroundColor: theme.colors.cardBorder,
+        marginVertical: theme.spacing.sm,
     },
     label: {
-        fontSize: theme.fontSize.md,
+        fontSize: theme.fontSize.sm,
         fontWeight: 'bold',
         color: theme.colors.primary,
-        marginTop: theme.spacing.xl,
+        marginTop: theme.spacing.lg,
         marginBottom: theme.spacing.xs,
     },
-    endereco: {
+    valor: {
         fontSize: theme.fontSize.lg,
         color: theme.colors.textSecondary,
         lineHeight: 22,
     },
-    diasHorarios: {
+    tipoValor: {
         fontSize: theme.fontSize.md,
-        color: theme.colors.textMuted,
+        fontWeight: '600',
+        color: theme.colors.text,
         lineHeight: 20,
     },
-    funcionamento: {
-        fontSize: theme.fontSize.sm,
-        fontWeight: '600',
-        color: theme.colors.primary,
-        lineHeight: 18,
+    btnEditar: {
+        backgroundColor: theme.colors.primary,
+        borderRadius: theme.borderRadius.lg,
+        paddingVertical: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: theme.spacing['2xl'],
+    },
+    btnEditarText: {
+        color: theme.colors.textWhite,
+        fontWeight: 'bold',
+        fontSize: theme.fontSize.md,
+    },
+    btnExcluir: {
+        backgroundColor: theme.colors.danger,
+        borderRadius: theme.borderRadius.lg,
+        paddingVertical: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: theme.spacing.md,
+    },
+    btnExcluirText: {
+        color: theme.colors.textWhite,
+        fontWeight: 'bold',
+        fontSize: theme.fontSize.md,
     },
     errorIcon: {
         fontSize: 40,
