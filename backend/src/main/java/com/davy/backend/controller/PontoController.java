@@ -12,6 +12,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -42,6 +46,16 @@ public class PontoController {
     @GetMapping
     public ResponseEntity<List<PontoResponseDTO>> getAllPontos() {
         return ResponseEntity.ok(pontoService.findAll());
+    }
+
+    @Operation(summary = "Buscar pontos paginados com filtro", description = "Retorna uma página de pontos filtrados por nome ou bairro (sem diferenciar maiúsculas/minúsculas) ou todos os pontos paginados quando sem filtro")
+    @ApiResponse(responseCode = "200", description = "Página de pontos retornada com sucesso")
+    @GetMapping("/filtro")
+    public ResponseEntity<Page<PontoResponseDTO>> getPontosComFiltro(
+            @Parameter(description = "Termo de busca para nome ou bairro")
+            @RequestParam(required = false) String filtro,
+            @PageableDefault(size = 10, sort = "nome") Pageable pageable) {
+        return ResponseEntity.ok(pontoService.findByFiltro(filtro, pageable));
     }
 
     @Operation(summary = "Buscar ponto por ID", description = "Retorna os detalhes de um ponto específico a partir do seu UUID")

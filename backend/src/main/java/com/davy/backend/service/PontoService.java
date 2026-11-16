@@ -6,6 +6,8 @@ import com.davy.backend.entity.Ponto;
 import com.davy.backend.repository.PontoRepository;
 import com.davy.backend.service.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,13 @@ public class PontoService {
                 .stream()
                 .map(PontoResponseDTO::fromEntity)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<PontoResponseDTO> findByFiltro(String filtro, Pageable pageable) {
+        String termoFiltro = (filtro != null && !filtro.isBlank()) ? filtro.trim() : null;
+        Page<Ponto> page = pontoRepository.findByFiltro(termoFiltro, pageable);
+        return page.map(PontoResponseDTO::fromEntity);
     }
 
     @Transactional(readOnly = true)
