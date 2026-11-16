@@ -6,6 +6,7 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 import TelaListaPontos from './src/screens/TelaListaPontos';
 import TelaDetalhePonto from './src/screens/TelaDetalhePonto';
+import TelaFormularioPonto from './src/screens/TelaFormularioPonto';
 import TelaFormularioDoacao from './src/screens/TelaFormularioDoacao';
 import TelaDetalheDoacao from './src/screens/TelaDetalheDoacao';
 import {theme} from './src/theme/theme';
@@ -37,6 +38,11 @@ export default function App() {
               name="TelaDetalhePonto"
               component={TelaDetalhePonto}
               options={{title: 'Detalhes do Ponto'}}
+          />
+          <Stack.Screen
+              name="TelaFormularioPonto"
+              component={TelaFormularioPonto}
+              options={{title: 'Ponto de Coleta/Distribuição'}}
           />
           <Stack.Screen
               name="TelaFormularioDoacao"

@@ -50,7 +50,8 @@ function TelaListaPontos({navigation}: Props) {
     useFocusEffect(
         useCallback(() => {
             carregarDadosDoacoes();
-        }, [])
+            buscarPontosPrimeiraPagina(busca, true);
+        }, [busca, buscarPontosPrimeiraPagina])
     );
 
     const buscarPontosPrimeiraPagina = useCallback(async (termoBusca: string, ehRefresh = false) => {
@@ -174,7 +175,16 @@ function TelaListaPontos({navigation}: Props) {
     return (
         <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
             <View style={styles.header}>
-                <Text style={styles.titleText}>Pontos de Coleta</Text>
+                <View style={styles.titleContainer}>
+                    <Text style={styles.titleText}>Pontos de Coleta</Text>
+                </View>
+                <TouchableOpacity
+                    style={styles.btnNovoPonto}
+                    onPress={() => navigation.navigate('TelaFormularioPonto')}
+                    activeOpacity={0.8}
+                >
+                    <Text style={styles.btnNovoPontoText}>+ Novo Ponto</Text>
+                </TouchableOpacity>
             </View>
 
             <TextInput
@@ -219,8 +229,8 @@ function TelaListaPontos({navigation}: Props) {
 
             <Pressable
                 style={styles.floatingButton}
-                onPress={() => setModalVisible(true)}
-                accessibilityLabel="Adicionar nova doação"
+                onPress={() => navigation.navigate('TelaFormularioPonto')}
+                accessibilityLabel="Cadastrar novo ponto"
                 accessibilityRole="button"
             >
                 <Text style={styles.floatingButtonText}>+</Text>
@@ -311,13 +321,31 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.background,
     },
     header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         paddingHorizontal: theme.spacing['2xl'],
         paddingTop: theme.spacing['2xl'],
+        paddingBottom: theme.spacing.xs,
+    },
+    titleContainer: {
+        flex: 1,
     },
     titleText: {
         color: theme.colors.text,
-        fontSize: theme.fontSize['4xl'],
+        fontSize: theme.fontSize['3xl'],
         fontWeight: 'bold',
+    },
+    btnNovoPonto: {
+        backgroundColor: theme.colors.primary,
+        paddingHorizontal: theme.spacing.lg,
+        paddingVertical: theme.spacing.sm,
+        borderRadius: theme.borderRadius.sm,
+    },
+    btnNovoPontoText: {
+        color: theme.colors.textWhite,
+        fontWeight: 'bold',
+        fontSize: theme.fontSize.sm,
     },
     inputBusca: {
         backgroundColor: theme.colors.cardBackground,
