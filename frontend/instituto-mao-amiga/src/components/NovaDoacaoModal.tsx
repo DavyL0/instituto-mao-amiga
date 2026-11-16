@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import {theme} from "../theme/theme";
 import React, { useEffect, useState } from "react";
-import {pontosMock} from "../mocks/pontosMock";
+import * as pontosService from "../services/pontosService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type NovoPontoModalProps = {
@@ -38,6 +38,7 @@ export function NovaDoacaoModal(
     const [tipoDropdownAberto, setTipoDropdownAberto] = useState(false);
     const [qtdItem, setQtdItem] = useState('');
     const [pontoSelecionado, setPontoSelecionado] = useState<Ponto | null>(null);
+    const [pontos, setPontos] = useState<Ponto[]>([]);
     const [dropdownAberto, setDropdownAberto] = useState(false);
     const [erros, setErros] = useState<ErrosForm>({});
 
@@ -72,7 +73,7 @@ export function NovaDoacaoModal(
 
         const novaDoacao: Doacao = {
             id: Date.now(),
-            tipoItem: tipoItem,
+            tipoItem: tipoItem as TipoItem,
             qtdItem: qtdNumerica,
             pontoSelecionado: pontoSelecionado!,
             criadoEm: new Date().toISOString()
@@ -112,6 +113,11 @@ export function NovaDoacaoModal(
     useEffect(() => {
         if (visible) {
             carregarFormulario();
+            pontosService.listar().then((lista) => {
+                setPontos(lista);
+            }).catch((err) => {
+                console.error('Erro ao carregar lista de pontos no modal:', err);
+            });
         }
     }, [visible]);
 
@@ -291,7 +297,7 @@ export function NovaDoacaoModal(
                             {dropdownAberto && (
                                 <View style={styles.dropdownContainer}>
                                     <ScrollView style={styles.dropdownScroll} nestedScrollEnabled={true}>
-                                        {pontosMock.map(ponto => {
+                                        {pontos.map(ponto => {
                                             const selecionado = pontoSelecionado?.id === ponto.id;
                                             return (
                                                 <TouchableOpacity
