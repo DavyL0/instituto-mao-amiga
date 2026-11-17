@@ -24,7 +24,6 @@ const DoacaoFormScreen = ({ route, navigation }: Props) => {
     const [loading, setLoading] = useState<boolean>(doacaoId != null);
     const [erro, setErro] = useState('');
     const [tentativa, setTentativa] = useState(0);
-    const [erro, setErro] = useState('');
 
     useEffect(() => {
         let isMounted = true;

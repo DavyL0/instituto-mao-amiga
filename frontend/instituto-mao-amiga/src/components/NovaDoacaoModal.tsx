@@ -96,7 +96,15 @@ export function NovaDoacaoModal(
         let ativo = true;
         setPontos([]);
         setErroPontos('');
-        get<Ponto[]>('/api/v1/pontos').then((lista) => {
+        get<unknown>('/api/v1/pontos').then((resposta) => {
+            const lista = Array.isArray(resposta)
+                ? resposta
+                : resposta !== null && typeof resposta === 'object' && 'data' in resposta
+                    ? resposta.data
+                    : undefined;
+            if (!Array.isArray(lista)) {
+                throw new Error('Resposta inválida ao carregar pontos.');
+            }
             if (ativo) {
                 setPontos(lista);
             }

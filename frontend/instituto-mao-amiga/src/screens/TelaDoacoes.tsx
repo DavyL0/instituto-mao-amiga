@@ -30,9 +30,6 @@ function TelaDoacoes({ navigation }: Props) {
     const requisicao = useRef(0);
     const emAndamento = useRef(false);
     const temMaisRef = useRef(true);
-    const [erro, setErro] = useState(false);
-    const [carregando, setCarregando] = useState(true);
-    const [tentativa, setTentativa] = useState(0);
 
     const carregarPagina = useCallback(async (geracao: number, termo: string) => {
         if (emAndamento.current || !temMaisRef.current) return;

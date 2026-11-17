@@ -61,7 +61,7 @@ export async function editarDoacao(id: number, data: DoacaoFormData): Promise<Do
     return converterDoacao(await api.put<DoacaoApi>(`/api/v1/doacoes/${id}`, { ...data, pontoDestino: data.pontoDestino.trim() }));
 }
 
-export async function excluirDoacao(id: number): Promise<void> {
+export async function excluirDoacao(id: number | string): Promise<void> {
     await api.del<void>(`/api/v1/doacoes/${id}`);
 }
 

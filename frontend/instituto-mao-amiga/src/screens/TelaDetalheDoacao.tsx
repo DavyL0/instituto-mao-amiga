@@ -87,7 +87,6 @@ function TelaDetalheDoacao({ route, navigation }: Props) {
     const [erro, setErro] = useState('');
     const [tentativa, setTentativa] = useState(0);
     const [excluindo, setExcluindo] = useState(false);
-    const [erro, setErro] = useState('');
 
     const carregarDados = async () => {
         setLoading(true);
