@@ -4,8 +4,9 @@ import { Controller, useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { theme } from '../theme/theme';
-import { Doacao, TipoItem } from '../types/types';
+import { Doacao, Ponto, TipoItem } from '../types/types';
 import { criarDoacao, editarDoacao, DoacaoFormData } from '../services/doacoesService';
+import { get } from '../services/api';
 
 const fieldsValidationSchema = yup.object().shape({
     tipoItem: yup
@@ -130,6 +131,25 @@ type DoacaoScreenProps = {
 
 export const DoacaoScreen = ({ doacaoParaEditar, onSuccess }: DoacaoScreenProps) => {
     const isEditing = Boolean(doacaoParaEditar);
+    const [pontos, setPontos] = useState<Ponto[]>([]);
+    const [carregandoPontos, setCarregandoPontos] = useState(true);
+    const [erroPontos, setErroPontos] = useState(false);
+    const [tentativaPontos, setTentativaPontos] = useState(0);
+
+    useEffect(() => {
+        let ativo = true;
+        setCarregandoPontos(true);
+        setErroPontos(false);
+        get<Ponto[] | { data: Ponto[] }>('/api/v1/pontos')
+            .then((resposta) => {
+                const lista = Array.isArray(resposta) ? resposta : resposta.data;
+                if (!Array.isArray(lista)) throw new Error('Resposta inválida');
+                if (ativo) setPontos(lista);
+            })
+            .catch(() => { if (ativo) setErroPontos(true); })
+            .finally(() => { if (ativo) setCarregandoPontos(false); });
+        return () => { ativo = false; };
+    }, [tentativaPontos]);
 
     const {
         control,
@@ -167,6 +187,10 @@ export const DoacaoScreen = ({ doacaoParaEditar, onSuccess }: DoacaoScreenProps)
     }, [doacaoParaEditar, reset]);
 
     const onSubmit = async (data: DoacaoFormData) => {
+        if (!pontos.some((ponto) => ponto.nome === data.pontoDestino)) {
+            Alert.alert('Erro', 'Selecione um ponto de destino disponível.');
+            return;
+        }
         try {
             if (doacaoParaEditar) {
                 const doacaoAtualizada = await editarDoacao(doacaoParaEditar.id, data);
@@ -235,22 +259,30 @@ export const DoacaoScreen = ({ doacaoParaEditar, onSuccess }: DoacaoScreenProps)
             <Controller
                 control={control}
                 name="pontoDestino"
-                render={({ field: { onChange, onBlur, value } }) => (
-                    <TextField
-                        label="Ponto de Destino"
-                        placeholder="Ex: Catedral Bom Jesus"
-                        onBlur={onBlur}
-                        onChangeText={onChange}
-                        value={value}
-                        error={errors.pontoDestino?.message}
-                    />
+                render={({ field: { onChange, value } }) => (
+                    <View style={styles.container}>
+                        <Text style={styles.label}>Ponto de Destino</Text>
+                        {carregandoPontos && <Text>Carregando pontos...</Text>}
+                        {erroPontos && (
+                            <TouchableOpacity onPress={() => setTentativaPontos((atual) => atual + 1)}>
+                                <Text style={styles.errorText}>Não foi possível carregar os pontos. Toque para tentar novamente.</Text>
+                            </TouchableOpacity>
+                        )}
+                        {!carregandoPontos && !erroPontos && pontos.length === 0 && <Text>Nenhum ponto disponível.</Text>}
+                        {!erroPontos && pontos.map((ponto) => (
+                            <TouchableOpacity key={ponto.id} style={[styles.dropdownItem, value === ponto.nome && styles.dropdownItemSelected]} onPress={() => onChange(ponto.nome)} accessibilityRole="radio" accessibilityState={{ checked: value === ponto.nome }}>
+                                <Text style={[styles.dropdownItemText, value === ponto.nome && styles.dropdownItemTextSelected]}>{ponto.nome}</Text>
+                            </TouchableOpacity>
+                        ))}
+                        {errors.pontoDestino && <Text style={styles.errorText}>{errors.pontoDestino.message}</Text>}
+                    </View>
                 )}
             />
 
             <TouchableOpacity
                 style={styles.buttonSubmit}
                 onPress={handleSubmit(onSubmit)}
-                disabled={isSubmitting}
+                disabled={isSubmitting || carregandoPontos || erroPontos || pontos.length === 0}
                 activeOpacity={0.8}
             >
                 <Text style={styles.buttonSubmitText}>

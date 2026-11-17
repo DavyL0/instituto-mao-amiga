@@ -40,9 +40,7 @@ const DoacaoFormScreen = ({ route, navigation }: Props) => {
                 })
                 .catch((error) => {
                     if (isMounted) {
-                        setErro(error instanceof ApiError && error.status === 404
-                            ? 'Doação não encontrada.'
-                            : 'Não foi possível carregar a doação.');
+                        setErro('Não foi possível carregar a doação para edição.');
                         setLoading(false);
                     }
                 });
@@ -80,6 +78,10 @@ const DoacaoFormScreen = ({ route, navigation }: Props) => {
                 </TouchableOpacity>
             </View>
         );
+    }
+
+    if (isEditing && !doacaoParaEditar) {
+        return <View style={styles.centerContainer}><Text style={styles.loadingText}>{erro || 'Doação não encontrada.'}</Text></View>;
     }
 
     return (

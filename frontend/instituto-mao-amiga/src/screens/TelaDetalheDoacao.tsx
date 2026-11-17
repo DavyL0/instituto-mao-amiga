@@ -88,6 +88,19 @@ function TelaDetalheDoacao({ route, navigation }: Props) {
     const [tentativa, setTentativa] = useState(0);
     const [excluindo, setExcluindo] = useState(false);
 
+    const carregarDados = async () => {
+        setLoading(true);
+        try {
+            setDoacao(await obterDoacaoPorId(doacaoId));
+            setErro('');
+        } catch (error) {
+            setDoacao(null);
+            setErro(error instanceof ApiError && error.status === 404 ? 'Doação não encontrada.' : 'Não foi possível carregar a doação.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useFocusEffect(
         useCallback(() => {
             let ativo = true;
@@ -168,6 +181,7 @@ function TelaDetalheDoacao({ route, navigation }: Props) {
                 <TouchableOpacity style={styles.btnEditar} onPress={() => setTentativa((valor) => valor + 1)}>
                     <Text style={styles.btnEditarText}>Tentar novamente</Text>
                 </TouchableOpacity>
+                <Text style={styles.erroText}>{erro || 'Doação não encontrada.'}</Text>
             </View>
         );
     }

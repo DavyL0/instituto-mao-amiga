@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
     FlatList,
     StyleSheet,
     Text,
@@ -12,48 +13,64 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Doacao, RootStackParamList } from '../types/types';
 import { theme } from '../theme/theme';
-import { carregarHistorico, getTotalHistorico } from '../services/doacoesService';
+import { buscarPaginaDoacoes } from '../services/doacoesService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TelaDoacoes'>;
+
+const LIMITE_PAGINA = 20;
 
 function TelaDoacoes({ navigation }: Props) {
     const [historico, setHistorico] = useState<Doacao[]>([]);
     const [busca, setBusca] = useState('');
-    const [totalGeral, setTotalGeral] = useState({ totalRegistros: 0, totalItens: 0 });
+    const [carregando, setCarregando] = useState(false);
     const [erro, setErro] = useState(false);
-    const [carregando, setCarregando] = useState(true);
+    const [temMais, setTemMais] = useState(true);
     const [tentativa, setTentativa] = useState(0);
+    const pagina = useRef(0);
+    const requisicao = useRef(0);
+    const emAndamento = useRef(false);
+    const temMaisRef = useRef(true);
+
+    const carregarPagina = useCallback(async (geracao: number, termo: string) => {
+        if (emAndamento.current || !temMaisRef.current) return;
+        emAndamento.current = true;
+        setCarregando(true);
+        setErro(false);
+        try {
+            const proximaPagina = pagina.current + 1;
+            const dados: Doacao[] = await buscarPaginaDoacoes(proximaPagina, LIMITE_PAGINA, termo || undefined);
+            if (geracao !== requisicao.current) return;
+            setHistorico((anteriores) => {
+                const ids = new Set(anteriores.map((item) => item.id));
+                return [...anteriores, ...dados.filter((item) => !ids.has(item.id))];
+            });
+            pagina.current = proximaPagina;
+            temMaisRef.current = dados.length === LIMITE_PAGINA;
+            setTemMais(temMaisRef.current);
+        } catch {
+            if (geracao === requisicao.current) setErro(true);
+        } finally {
+            if (geracao === requisicao.current) {
+                emAndamento.current = false;
+                setCarregando(false);
+            }
+        }
+    }, []);
 
     useFocusEffect(
         useCallback(() => {
-            let ativo = true;
-            setCarregando(true);
-            setErro(false);
-            carregarHistorico()
-                .then(async (dados) => {
-                    const totais = await getTotalHistorico(dados);
-                    if (ativo) {
-                        setHistorico(dados);
-                        setTotalGeral(totais);
-                    }
-                })
-                .catch(() => {
-                    if (ativo) setErro(true);
-                })
-                .finally(() => {
-                    if (ativo) setCarregando(false);
-                });
-            return () => { ativo = false; };
-        }, [tentativa])
+            const geracao = ++requisicao.current;
+            pagina.current = 0;
+            emAndamento.current = false;
+            temMaisRef.current = true;
+            setTemMais(true);
+            setHistorico([]);
+            carregarPagina(geracao, busca.trim());
+            return () => {
+                requisicao.current++;
+            };
+        }, [busca, carregarPagina, tentativa])
     );
-
-    const historicoFiltrado = useMemo(() => {
-        if (!busca.trim()) return historico;
-        const termo = busca.trim().toLowerCase();
-        return historico.filter((doacao) =>
-            doacao.tipoItem?.toLowerCase().includes(termo)
-        );
-    }, [historico, busca]);
 
     const renderItem = ({ item }: { item: Doacao }) => {
         const destinoNome =
@@ -99,7 +116,17 @@ function TelaDoacoes({ navigation }: Props) {
     };
 
     const renderEmpty = () => {
-        if (carregando || erro) return null;
+        if (carregando) return <ActivityIndicator color={theme.colors.primary} />;
+        if (erro) {
+            return (
+                <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyTitle}>Não foi possível carregar as doações</Text>
+                    <TouchableOpacity style={styles.emptyButton} onPress={() => setTentativa((valor) => valor + 1)}>
+                        <Text style={styles.emptyButtonText}>Tentar novamente</Text>
+                    </TouchableOpacity>
+                </View>
+            );
+        }
         if (busca.trim()) {
             return (
                 <View style={styles.emptyContainer}>
@@ -135,11 +162,6 @@ function TelaDoacoes({ navigation }: Props) {
             <View style={styles.header}>
                 <View style={styles.titleContainer}>
                     <Text style={styles.titleText}>Histórico de Doações</Text>
-                    {historico.length > 0 && (
-                        <Text style={styles.subtitleText}>
-                            Total: {totalGeral.totalRegistros} doações ({totalGeral.totalItens} itens)
-                        </Text>
-                    )}
                 </View>
                 <TouchableOpacity
                     style={styles.btnNovaDoacao}
@@ -167,10 +189,21 @@ function TelaDoacoes({ navigation }: Props) {
                 </TouchableOpacity>
             )}
             <FlatList
-                data={historicoFiltrado}
+                data={historico}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={renderItem}
                 ListEmptyComponent={renderEmpty}
+                ListFooterComponent={historico.length > 0 ? (
+                    carregando ? <ActivityIndicator color={theme.colors.primary} /> : erro ? (
+                        <TouchableOpacity style={styles.emptyButton} onPress={() => carregarPagina(requisicao.current, busca.trim())}>
+                            <Text style={styles.emptyButtonText}>Erro ao carregar mais. Tentar novamente</Text>
+                        </TouchableOpacity>
+                    ) : null
+                ) : null}
+                onEndReached={() => {
+                    if (!erro && temMais) carregarPagina(requisicao.current, busca.trim());
+                }}
+                onEndReachedThreshold={0.5}
                 style={styles.scrollArea}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
