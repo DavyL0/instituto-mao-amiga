@@ -3,7 +3,13 @@ import { Ponto } from '../types/types';
 import { StyleSheet, TouchableOpacity, Text, View } from 'react-native';
 import { theme } from '../theme/theme';
 
-export function PontoItem({ ponto, onPress }: { ponto: Ponto; onPress: () => void }) {
+export function PontoItem({ ponto, onPress, favorito, onAlternarFavorito, favoritoDesabilitado }: {
+    ponto: Ponto;
+    onPress: () => void;
+    favorito?: boolean;
+    onAlternarFavorito?: () => void;
+    favoritoDesabilitado?: boolean;
+}) {
     const enderecoFormatado = ponto.bairro
         ? `${ponto.endereco} - ${ponto.bairro}`
         : ponto.endereco;
@@ -15,7 +21,8 @@ export function PontoItem({ ponto, onPress }: { ponto: Ponto; onPress: () => voi
         : ponto.funcionamento || '';
 
     return (
-        <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={onPress}>
+        <View style={styles.card}>
+          <TouchableOpacity activeOpacity={0.7} onPress={onPress}>
             <View style={styles.headerRow}>
                 <Text style={styles.nome}>{ponto.nome}</Text>
                 {tipoExibicao ? (
@@ -28,7 +35,20 @@ export function PontoItem({ ponto, onPress }: { ponto: Ponto; onPress: () => voi
             {horarioExibicao ? (
                 <Text style={styles.diasHorarios}>🕒 {horarioExibicao}</Text>
             ) : null}
-        </TouchableOpacity>
+          </TouchableOpacity>
+          {onAlternarFavorito && (
+              <TouchableOpacity
+                  style={styles.favorito}
+                  onPress={onAlternarFavorito}
+                  disabled={favoritoDesabilitado}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${favorito ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}: ${ponto.nome}`}
+                  accessibilityState={{checked: !!favorito, disabled: !!favoritoDesabilitado}}
+              >
+                  <Text style={styles.favoritoTexto}>{favorito ? '♥' : '♡'}</Text>
+              </TouchableOpacity>
+          )}
+        </View>
     );
 }
 
@@ -47,6 +67,17 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         marginBottom: theme.spacing.sm,
         gap: theme.spacing.sm,
+    },
+    favorito: {
+        width: 44,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        alignSelf: 'flex-end',
+    },
+    favoritoTexto: {
+        color: theme.colors.primary,
+        fontSize: 28,
     },
     nome: {
         fontSize: theme.fontSize['2xl'],

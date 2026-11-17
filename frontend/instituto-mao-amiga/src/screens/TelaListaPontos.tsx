@@ -20,6 +20,7 @@ import {NovaDoacaoModal} from "../components/NovaDoacaoModal";
 import {Doacao, Ponto, RootStackParamList} from "../types/types";
 import {carregarHistorico} from "../services/doacoesService";
 import * as pontosService from "../services/pontosService";
+import {alternarFavorito, listarFavoritos} from "../services/favoritosService";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TelaListaPontos'>;
 
@@ -37,6 +38,10 @@ function TelaListaPontos({navigation}: Props) {
     const [recarregando, setRecarregando] = useState(false);
     const [temMais, setTemMais] = useState(true);
     const [erro, setErro] = useState<string | null>(null);
+    const [favoritos, setFavoritos] = useState<(number | string)[]>([]);
+    const [favoritosCarregados, setFavoritosCarregados] = useState(false);
+    const [salvandoFavorito, setSalvandoFavorito] = useState(false);
+    const salvandoFavoritoRef = useRef(false);
 
     // Evitar múltiplas requisições simultâneas ou da mesma página
     const requisicaoEmAndamento = useRef(false);
@@ -77,6 +82,36 @@ function TelaListaPontos({navigation}: Props) {
             requisicaoEmAndamento.current = false;
         }
     }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            let ativo = true;
+            setFavoritosCarregados(false);
+            listarFavoritos().then((ids) => {
+                if (ativo) {
+                    setFavoritos(ids);
+                    setFavoritosCarregados(true);
+                }
+            }).catch(() => {
+                if (ativo) Alert.alert('Erro', 'Não foi possível carregar os favoritos.');
+            });
+            return () => { ativo = false; };
+        }, [])
+    );
+
+    const handleAlternarFavorito = async (id: number | string) => {
+        if (salvandoFavoritoRef.current) return;
+        salvandoFavoritoRef.current = true;
+        setSalvandoFavorito(true);
+        try {
+            setFavoritos(await alternarFavorito(id));
+        } catch {
+            Alert.alert('Erro', 'Não foi possível salvar o favorito.');
+        } finally {
+            salvandoFavoritoRef.current = false;
+            setSalvandoFavorito(false);
+        }
+    };
 
     useFocusEffect(
         useCallback(() => {
@@ -191,6 +226,14 @@ function TelaListaPontos({navigation}: Props) {
                 </TouchableOpacity>
             </View>
 
+            <TouchableOpacity
+                style={styles.btnMeusPontos}
+                onPress={() => navigation.navigate('TelaMeusPontos')}
+                accessibilityRole="button"
+            >
+                <Text style={styles.btnNovoPontoText}>♥ Meus pontos</Text>
+            </TouchableOpacity>
+
             <TextInput
                 style={styles.inputBusca}
                 placeholder="Buscar pontos..."
@@ -247,6 +290,9 @@ function TelaListaPontos({navigation}: Props) {
                     <PontoItem
                         ponto={item}
                         onPress={() => navigation.navigate('TelaDetalhePonto', {pontoId: item.id})}
+                        favorito={favoritos.some((id) => String(id) === String(item.id))}
+                        onAlternarFavorito={() => handleAlternarFavorito(item.id)}
+                        favoritoDesabilitado={salvandoFavorito || !favoritosCarregados}
                     />
                 )}
                 contentContainerStyle={styles.listaContainer}
@@ -350,6 +396,15 @@ const styles = StyleSheet.create({
         color: theme.colors.textWhite,
         fontWeight: 'bold',
         fontSize: theme.fontSize.sm,
+    },
+    btnMeusPontos: {
+        backgroundColor: theme.colors.primary,
+        alignSelf: 'flex-start',
+        marginHorizontal: theme.spacing['2xl'],
+        marginTop: theme.spacing.md,
+        paddingHorizontal: theme.spacing.lg,
+        paddingVertical: theme.spacing.md,
+        borderRadius: theme.borderRadius.sm,
     },
     inputBusca: {
         backgroundColor: theme.colors.cardBackground,
