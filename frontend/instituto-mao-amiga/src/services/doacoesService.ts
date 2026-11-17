@@ -1,5 +1,5 @@
 import * as api from './api';
-import { Doacao, TipoItem } from '../types/types';
+import { Doacao, Ponto, TipoItem } from '../types/types';
 
 export type DoacaoFormData = {
     tipoItem: TipoItem;
@@ -63,4 +63,8 @@ export async function editarDoacao(id: number, data: DoacaoFormData): Promise<Do
 
 export async function excluirDoacao(id: number): Promise<void> {
     await api.del<void>(`/api/v1/doacoes/${id}`);
+}
+
+export async function excluir(id: number | string): Promise<void> {
+    return excluirDoacao(id);
 }

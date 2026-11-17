@@ -30,6 +30,9 @@ function TelaDoacoes({ navigation }: Props) {
     const requisicao = useRef(0);
     const emAndamento = useRef(false);
     const temMaisRef = useRef(true);
+    const [erro, setErro] = useState(false);
+    const [carregando, setCarregando] = useState(true);
+    const [tentativa, setTentativa] = useState(0);
 
     const carregarPagina = useCallback(async (geracao: number, termo: string) => {
         if (emAndamento.current || !temMaisRef.current) return;
@@ -182,6 +185,12 @@ function TelaDoacoes({ navigation }: Props) {
                 clearButtonMode="while-editing"
             />
 
+            {erro && (
+                <TouchableOpacity style={styles.emptyContainer} onPress={() => setTentativa((valor) => valor + 1)}>
+                    <Text style={styles.emptyTitle}>Não foi possível carregar o histórico.</Text>
+                    <Text style={styles.emptyText}>Toque para tentar novamente.</Text>
+                </TouchableOpacity>
+            )}
             <FlatList
                 data={historico}
                 keyExtractor={(item) => item.id.toString()}
