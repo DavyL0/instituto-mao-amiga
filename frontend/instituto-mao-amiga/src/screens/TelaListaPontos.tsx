@@ -43,16 +43,13 @@ function TelaListaPontos({navigation}: Props) {
     const ultimaPaginaRequisitada = useRef(0);
 
     const carregarDadosDoacoes = async () => {
-        const dados = await carregarHistorico();
-        setDoacoes(dados);
+        try {
+            const dados = await carregarHistorico();
+            setDoacoes(dados);
+        } catch {
+            setDoacoes([]);
+        }
     };
-
-    useFocusEffect(
-        useCallback(() => {
-            carregarDadosDoacoes();
-            buscarPontosPrimeiraPagina(busca, true);
-        }, [busca, buscarPontosPrimeiraPagina])
-    );
 
     const buscarPontosPrimeiraPagina = useCallback(async (termoBusca: string, ehRefresh = false) => {
         if (requisicaoEmAndamento.current && !ehRefresh) return;
@@ -80,6 +77,13 @@ function TelaListaPontos({navigation}: Props) {
             requisicaoEmAndamento.current = false;
         }
     }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            carregarDadosDoacoes();
+            buscarPontosPrimeiraPagina(busca, true);
+        }, [busca, buscarPontosPrimeiraPagina])
+    );
 
     // Busca ao alterar o texto de busca ou ao montar a tela
     useEffect(() => {

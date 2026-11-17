@@ -1,7 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as api from './api';
 import { Doacao, TipoItem } from '../types/types';
-
-export const STORAGE_KEY_LIST = '@institutomaoamiga:doacoes';
 
 export type DoacaoFormData = {
     tipoItem: TipoItem;
@@ -9,105 +7,60 @@ export type DoacaoFormData = {
     pontoDestino: string;
 };
 
+type DoacaoApi = Doacao & { quantidade?: number; pontoDestino?: string };
+
+function converterDoacao(item: DoacaoApi): Doacao {
+    return {
+        ...item,
+        qtdItem: item.quantidade ?? item.qtdItem,
+        pontoSelecionado: item.pontoSelecionado ?? {
+            id: 0,
+            nome: item.pontoDestino ?? '',
+            endereco: '',
+        },
+    };
+}
+
+export async function buscarPaginaDoacoes(pagina = 1, limite = 10, busca?: string): Promise<Doacao[]> {
+    const params = new URLSearchParams();
+    params.append('_page', String(pagina));
+    params.append('_limit', String(limite));
+    params.append('_sort', 'criadoEm');
+    params.append('_order', 'desc');
+    if (busca?.trim()) params.append('tipoItem', busca.trim());
+    const resposta = await api.get<DoacaoApi[] | { data: DoacaoApi[] }>(`/api/v1/doacoes?${params.toString()}`);
+    const itens = Array.isArray(resposta) ? resposta : resposta.data;
+    if (!Array.isArray(itens)) throw new Error('Resposta inválida ao carregar doações.');
+    return itens.map(converterDoacao);
+}
+
 export async function carregarHistorico(): Promise<Doacao[]> {
-    try {
-        const doacoesSalvas = await AsyncStorage.getItem(STORAGE_KEY_LIST);
-        if (doacoesSalvas) {
-            const parsed = JSON.parse(doacoesSalvas);
-            return Array.isArray(parsed) ? parsed : [];
-        }
-        return [];
-    } catch (error) {
-        console.error('Erro ao carregar histórico de doações:', error);
-        return [];
+    const lista: Doacao[] = [];
+    const limite = 100;
+    for (let pagina = 1; ; pagina++) {
+        const itens = await buscarPaginaDoacoes(pagina, limite);
+        lista.push(...itens);
+        if (itens.length < limite) return lista;
     }
 }
 
 export async function getTotalHistorico(historico?: Doacao[]): Promise<{ totalRegistros: number; totalItens: number }> {
-    const lista = historico ?? (await carregarHistorico());
-    const totalRegistros = lista.length;
-    const totalItens = lista.reduce((acumulador, item) => acumulador + (Number(item.qtdItem) || 0), 0);
-
-    return {
-        totalRegistros,
-        totalItens,
-    };
+    const lista = historico ?? await carregarHistorico();
+    return { totalRegistros: lista.length, totalItens: lista.reduce((total, item) => total + (Number(item.qtdItem) || 0), 0) };
 }
 
-export async function obterDoacaoPorId(id: number): Promise<Doacao | undefined> {
-    const lista = await carregarHistorico();
-    return lista.find((item) => item.id === id);
+export async function obterDoacaoPorId(id: number): Promise<Doacao> {
+    return converterDoacao(await api.get<DoacaoApi>(`/api/v1/doacoes/${id}`));
 }
 
 export async function criarDoacao(data: DoacaoFormData): Promise<Doacao> {
-    try {
-        const novaDoacao: Doacao = {
-            id: Date.now(),
-            tipoItem: data.tipoItem,
-            qtdItem: data.quantidade,
-            pontoSelecionado: {
-                id: 0,
-                nome: data.pontoDestino.trim(),
-                endereco: '',
-                diasHorarios: '',
-                funcionamento: '',
-            },
-            criadoEm: new Date().toISOString(),
-        };
-
-        const historico = await carregarHistorico();
-        const novaLista = [novaDoacao, ...historico];
-        await AsyncStorage.setItem(STORAGE_KEY_LIST, JSON.stringify(novaLista));
-
-        return novaDoacao;
-    } catch (error) {
-        console.error('Erro ao criar doação:', error);
-        throw error;
-    }
+    return converterDoacao(await api.post<DoacaoApi>('/api/v1/doacoes', { ...data, pontoDestino: data.pontoDestino.trim() }));
 }
 
 export async function editarDoacao(id: number, data: DoacaoFormData): Promise<Doacao> {
-    try {
-        const historico = await carregarHistorico();
-        let doacaoAtualizada: Doacao | undefined;
-
-        const novaLista = historico.map((item) => {
-            if (item.id === id) {
-                doacaoAtualizada = {
-                    ...item,
-                    tipoItem: data.tipoItem,
-                    qtdItem: data.quantidade,
-                    pontoSelecionado: {
-                        ...(typeof item.pontoSelecionado === 'object' && item.pontoSelecionado !== null
-                            ? item.pontoSelecionado
-                            : { id: 0, endereco: '', diasHorarios: '', funcionamento: '' }),
-                        nome: data.pontoDestino.trim(),
-                    },
-                };
-                return doacaoAtualizada;
-            }
-            return item;
-        });
-
-        if (!doacaoAtualizada) {
-            throw new Error(`Doação com ID ${id} não encontrada para edição.`);
-        }
-
-        await AsyncStorage.setItem(STORAGE_KEY_LIST, JSON.stringify(novaLista));
-        return doacaoAtualizada;
-    } catch (error) {
-        console.error('Erro ao editar doação:', error);
-        throw error;
-    }
+    return converterDoacao(await api.put<DoacaoApi>(`/api/v1/doacoes/${id}`, { ...data, pontoDestino: data.pontoDestino.trim() }));
 }
 
 export async function excluirDoacao(id: number): Promise<void> {
-    try {
-        const historico = await carregarHistorico();
-        const novaLista = historico.filter((item) => item.id !== id);
-        await AsyncStorage.setItem(STORAGE_KEY_LIST, JSON.stringify(novaLista));
-    } catch (error) {
-        console.error('Erro ao excluir doação:', error);
-        throw error;
-    }
+    await api.del<void>(`/api/v1/doacoes/${id}`);
 }

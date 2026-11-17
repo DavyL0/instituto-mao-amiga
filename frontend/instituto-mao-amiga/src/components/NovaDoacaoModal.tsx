@@ -13,8 +13,8 @@ import {
 } from "react-native";
 import {theme} from "../theme/theme";
 import React, { useEffect, useState } from "react";
-import * as pontosService from "../services/pontosService";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { get } from "../services/api";
+import { criarDoacao } from "../services/doacoesService";
 
 type NovoPontoModalProps = {
     visible: boolean;
@@ -28,9 +28,6 @@ type ErrosForm = {
     ponto?: string;
 };
 
-const STORAGE_KEY_LIST = '@institutomaoamiga:doacoes';
-const STORAGE_KEY_DRAFT = '@institutomaoamiga:draft_doacao';
-
 export function NovaDoacaoModal(
     {visible, onClose, onSave}: NovoPontoModalProps
 ) {
@@ -41,6 +38,9 @@ export function NovaDoacaoModal(
     const [pontos, setPontos] = useState<Ponto[]>([]);
     const [dropdownAberto, setDropdownAberto] = useState(false);
     const [erros, setErros] = useState<ErrosForm>({});
+    const [erroPontos, setErroPontos] = useState('');
+    const [erroSalvar, setErroSalvar] = useState('');
+    const [salvando, setSalvando] = useState(false);
 
     function validar(): boolean {
         const novosErros: ErrosForm = {};
@@ -67,28 +67,25 @@ export function NovaDoacaoModal(
     }
 
     async function salvar() {
-        if (!validar()) return;
+        if (salvando || !validar()) return;
 
         const qtdNumerica = Number(qtdItem.trim().replace(',', '.'));
-
-        const novaDoacao: Doacao = {
-            id: Date.now(),
-            tipoItem: tipoItem as TipoItem,
-            qtdItem: qtdNumerica,
-            pontoSelecionado: pontoSelecionado!,
-            criadoEm: new Date().toISOString()
-        };
-
+        setSalvando(true);
+        setErroSalvar('');
+        let novaDoacao: Doacao;
         try {
-            const doacoesSalvas = await AsyncStorage.getItem(STORAGE_KEY_LIST);
-            const listaAtual: Doacao[] = doacoesSalvas ? JSON.parse(doacoesSalvas) : [];
-            const novaLista = [novaDoacao, ...listaAtual];
-            await AsyncStorage.setItem(STORAGE_KEY_LIST, JSON.stringify(novaLista));
-            await AsyncStorage.removeItem(STORAGE_KEY_DRAFT);
+            novaDoacao = await criarDoacao({
+                tipoItem: tipoItem as TipoItem,
+                quantidade: qtdNumerica,
+                pontoDestino: pontoSelecionado!.nome,
+            });
         } catch (error) {
             console.error('Erro ao salvar doação:', error);
+            setErroSalvar('Não foi possível salvar a doação. Tente novamente.');
+            return;
+        } finally {
+            setSalvando(false);
         }
-
         limparFormulario();
         onSave(novaDoacao);
     }
@@ -96,46 +93,21 @@ export function NovaDoacaoModal(
     useEffect(() => {
         if (!visible) return;
 
-        const dados = {
-            tipoItem,
-            qtdItem,
-            pontoSelecionado,
-        };
-
-        AsyncStorage.setItem(
-            STORAGE_KEY_DRAFT,
-            JSON.stringify(dados)
-        ).catch((error) => {
-            console.error('Erro ao salvar rascunho:', error);
-        });
-    }, [tipoItem, qtdItem, pontoSelecionado, visible]);
-
-    useEffect(() => {
-        if (visible) {
-            carregarFormulario();
-            pontosService.listar().then((lista) => {
+        let ativo = true;
+        setPontos([]);
+        setErroPontos('');
+        get<Ponto[]>('/api/v1/pontos').then((lista) => {
+            if (ativo) {
                 setPontos(lista);
-            }).catch((err) => {
-                console.error('Erro ao carregar lista de pontos no modal:', err);
-            });
-        }
-    }, [visible]);
-
-    async function carregarFormulario() {
-        try {
-            const dadosSalvos = await AsyncStorage.getItem(STORAGE_KEY_DRAFT);
-
-            if (dadosSalvos) {
-                const dados = JSON.parse(dadosSalvos);
-
-                setTipoItem(dados.tipoItem ?? '');
-                setQtdItem(dados.qtdItem ?? '');
-                setPontoSelecionado(dados.pontoSelecionado ?? null);
             }
-        } catch (error) {
-            console.error('Erro ao carregar rascunho:', error);
-        }
-    }
+        }).catch((err) => {
+            if (ativo) {
+                console.error('Erro ao carregar lista de pontos no modal:', err);
+                setErroPontos('Não foi possível carregar os pontos. Feche e abra o formulário para tentar novamente.');
+            }
+        });
+        return () => { ativo = false; };
+    }, [visible]);
 
     function limparFormulario() {
         setTipoItem('');
@@ -143,10 +115,12 @@ export function NovaDoacaoModal(
         setQtdItem('');
         setPontoSelecionado(null);
         setErros({});
+        setErroSalvar('');
         setDropdownAberto(false);
     }
 
     function fechar() {
+        if (salvando) return;
         limparFormulario();
         onClose();
     }
@@ -294,6 +268,7 @@ export function NovaDoacaoModal(
                                 </Text>
                             </TouchableOpacity>
                             {erros.ponto ? <Text style={styles.errorText}>{erros.ponto}</Text> : null}
+                            {erroPontos ? <Text style={styles.errorText}>{erroPontos}</Text> : null}
                             {dropdownAberto && (
                                 <View style={styles.dropdownContainer}>
                                     <ScrollView style={styles.dropdownScroll} nestedScrollEnabled={true}>
@@ -333,6 +308,7 @@ export function NovaDoacaoModal(
                             )}
                         </View>
                     </ScrollView>
+                    {erroSalvar ? <Text style={styles.errorText}>{erroSalvar}</Text> : null}
                     <View style={styles.modalFooter}>
                         <TouchableOpacity
                             style={styles.buttonCancel}
@@ -345,6 +321,7 @@ export function NovaDoacaoModal(
                         <TouchableOpacity
                             style={styles.buttonSave}
                             onPress={salvar}
+                            disabled={salvando}
                             activeOpacity={0.8}
                         >
                             <Text style={styles.buttonSaveText}>Salvar</Text>

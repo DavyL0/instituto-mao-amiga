@@ -20,6 +20,7 @@ const DoacaoFormScreen = ({ route, navigation }: Props) => {
     const doacaoId = route.params?.doacaoId;
     const [doacaoParaEditar, setDoacaoParaEditar] = useState<Doacao | null>(null);
     const [loading, setLoading] = useState<boolean>(Boolean(doacaoId));
+    const [erro, setErro] = useState('');
 
     useEffect(() => {
         let isMounted = true;
@@ -33,6 +34,7 @@ const DoacaoFormScreen = ({ route, navigation }: Props) => {
                 })
                 .catch(() => {
                     if (isMounted) {
+                        setErro('Não foi possível carregar a doação para edição.');
                         setLoading(false);
                     }
                 });
@@ -60,6 +62,10 @@ const DoacaoFormScreen = ({ route, navigation }: Props) => {
     }
 
     const isEditing = Boolean(doacaoId);
+
+    if (isEditing && !doacaoParaEditar) {
+        return <View style={styles.centerContainer}><Text style={styles.loadingText}>{erro || 'Doação não encontrada.'}</Text></View>;
+    }
 
     return (
         <KeyboardAvoidingView

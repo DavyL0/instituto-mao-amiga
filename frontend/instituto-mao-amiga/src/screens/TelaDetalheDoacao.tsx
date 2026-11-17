@@ -12,7 +12,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { theme } from '../theme/theme';
 import { Doacao, RootStackParamList } from '../types/types';
-import { carregarHistorico, getTotalHistorico, excluirDoacao } from '../services/doacoesService';
+import { obterDoacaoPorId, excluirDoacao } from '../services/doacoesService';
+import { ApiError } from '../services/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TelaDetalheDoacao'>;
 
@@ -90,18 +91,20 @@ function DoacaoDetalhe({
 function TelaDetalheDoacao({ route, navigation }: Props) {
     const { doacaoId } = route.params;
     const [doacao, setDoacao] = useState<Doacao | null>(null);
-    const [totalGeral, setTotalGeral] = useState<{ totalRegistros: number; totalItens: number } | undefined>(undefined);
     const [loading, setLoading] = useState(true);
+    const [erro, setErro] = useState('');
 
     const carregarDados = async () => {
         setLoading(true);
-        const historico = await carregarHistorico();
-        const itemEncontrado = historico.find((item) => item.id === doacaoId);
-        const totais = await getTotalHistorico(historico);
-
-        setDoacao(itemEncontrado || null);
-        setTotalGeral(totais);
-        setLoading(false);
+        try {
+            setDoacao(await obterDoacaoPorId(doacaoId));
+            setErro('');
+        } catch (error) {
+            setDoacao(null);
+            setErro(error instanceof ApiError && error.status === 404 ? 'Doação não encontrada.' : 'Não foi possível carregar a doação.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     useFocusEffect(
@@ -164,7 +167,7 @@ function TelaDetalheDoacao({ route, navigation }: Props) {
     if (!doacao) {
         return (
             <View style={styles.container}>
-                <Text style={styles.erroText}>Doação não encontrada.</Text>
+                <Text style={styles.erroText}>{erro || 'Doação não encontrada.'}</Text>
             </View>
         );
     }
@@ -173,7 +176,6 @@ function TelaDetalheDoacao({ route, navigation }: Props) {
         <ScrollView style={styles.container} contentContainerStyle={styles.detalheScroll}>
             <DoacaoDetalhe
                 doacao={doacao}
-                totalGeral={totalGeral}
                 onEditar={() => navigation.navigate('TelaFormularioDoacao', { doacaoId: doacao.id })}
                 onExcluir={() => handleExcluirDoacao(doacao)}
             />
