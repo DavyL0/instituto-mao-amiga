@@ -47,7 +47,7 @@ export default function App() {
           <Stack.Screen
               name="TelaFormularioDoacao"
               component={TelaFormularioDoacao}
-              options={{title: 'Registrar Doação'}}
+              options={({route}) => ({title: route.params?.doacaoId != null ? 'Editar Doação' : 'Registrar Doação'})}
           />
           <Stack.Screen
               name="TelaDoacoes"

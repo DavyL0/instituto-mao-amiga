@@ -20,18 +20,31 @@ function TelaDoacoes({ navigation }: Props) {
     const [historico, setHistorico] = useState<Doacao[]>([]);
     const [busca, setBusca] = useState('');
     const [totalGeral, setTotalGeral] = useState({ totalRegistros: 0, totalItens: 0 });
-
-    const buscarDados = async () => {
-        const dados = await carregarHistorico();
-        setHistorico(dados);
-        const totais = await getTotalHistorico(dados);
-        setTotalGeral(totais);
-    };
+    const [erro, setErro] = useState(false);
+    const [carregando, setCarregando] = useState(true);
+    const [tentativa, setTentativa] = useState(0);
 
     useFocusEffect(
         useCallback(() => {
-            buscarDados();
-        }, [])
+            let ativo = true;
+            setCarregando(true);
+            setErro(false);
+            carregarHistorico()
+                .then(async (dados) => {
+                    const totais = await getTotalHistorico(dados);
+                    if (ativo) {
+                        setHistorico(dados);
+                        setTotalGeral(totais);
+                    }
+                })
+                .catch(() => {
+                    if (ativo) setErro(true);
+                })
+                .finally(() => {
+                    if (ativo) setCarregando(false);
+                });
+            return () => { ativo = false; };
+        }, [tentativa])
     );
 
     const historicoFiltrado = useMemo(() => {
@@ -86,6 +99,7 @@ function TelaDoacoes({ navigation }: Props) {
     };
 
     const renderEmpty = () => {
+        if (carregando || erro) return null;
         if (busca.trim()) {
             return (
                 <View style={styles.emptyContainer}>
@@ -146,6 +160,12 @@ function TelaDoacoes({ navigation }: Props) {
                 clearButtonMode="while-editing"
             />
 
+            {erro && (
+                <TouchableOpacity style={styles.emptyContainer} onPress={() => setTentativa((valor) => valor + 1)}>
+                    <Text style={styles.emptyTitle}>Não foi possível carregar o histórico.</Text>
+                    <Text style={styles.emptyText}>Toque para tentar novamente.</Text>
+                </TouchableOpacity>
+            )}
             <FlatList
                 data={historicoFiltrado}
                 keyExtractor={(item) => item.id.toString()}

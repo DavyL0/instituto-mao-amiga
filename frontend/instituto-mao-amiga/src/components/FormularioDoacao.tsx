@@ -135,7 +135,7 @@ export const DoacaoScreen = ({ doacaoParaEditar, onSuccess }: DoacaoScreenProps)
         control,
         handleSubmit,
         reset,
-        formState: { errors },
+        formState: { errors, isSubmitting },
     } = useForm<DoacaoFormData>({
         resolver: yupResolver(fieldsValidationSchema),
         defaultValues: {
@@ -250,6 +250,7 @@ export const DoacaoScreen = ({ doacaoParaEditar, onSuccess }: DoacaoScreenProps)
             <TouchableOpacity
                 style={styles.buttonSubmit}
                 onPress={handleSubmit(onSubmit)}
+                disabled={isSubmitting}
                 activeOpacity={0.8}
             >
                 <Text style={styles.buttonSubmitText}>

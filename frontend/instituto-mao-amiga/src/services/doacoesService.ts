@@ -1,7 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Doacao, TipoItem } from '../types/types';
+import * as api from './api';
+import { Doacao, Ponto, TipoItem } from '../types/types';
 
-export const STORAGE_KEY_LIST = '@institutomaoamiga:doacoes';
+const DOACOES_ENDPOINT = '/api/v1/doacoes';
 
 export type DoacaoFormData = {
     tipoItem: TipoItem;
@@ -9,105 +9,174 @@ export type DoacaoFormData = {
     pontoDestino: string;
 };
 
-export async function carregarHistorico(): Promise<Doacao[]> {
-    try {
-        const doacoesSalvas = await AsyncStorage.getItem(STORAGE_KEY_LIST);
-        if (doacoesSalvas) {
-            const parsed = JSON.parse(doacoesSalvas);
-            return Array.isArray(parsed) ? parsed : [];
-        }
-        return [];
-    } catch (error) {
-        console.error('Erro ao carregar histórico de doações:', error);
-        return [];
-    }
-}
+export type ListarDoacoesParams = {
+    pagina?: number;
+    limite?: number;
+    tipoItem?: string;
+};
 
-export async function getTotalHistorico(historico?: Doacao[]): Promise<{ totalRegistros: number; totalItens: number }> {
-    const lista = historico ?? (await carregarHistorico());
-    const totalRegistros = lista.length;
-    const totalItens = lista.reduce((acumulador, item) => acumulador + (Number(item.qtdItem) || 0), 0);
+export type ListarDoacoesResponse = {
+    dados: Doacao[];
+    total: number;
+    pagina: number;
+    limite: number;
+    temProximaPagina: boolean;
+};
 
-    return {
-        totalRegistros,
-        totalItens,
-    };
-}
-
-export async function obterDoacaoPorId(id: number): Promise<Doacao | undefined> {
-    const lista = await carregarHistorico();
-    return lista.find((item) => item.id === id);
-}
-
-export async function criarDoacao(data: DoacaoFormData): Promise<Doacao> {
-    try {
-        const novaDoacao: Doacao = {
-            id: Date.now(),
-            tipoItem: data.tipoItem,
-            qtdItem: data.quantidade,
-            pontoSelecionado: {
-                id: 0,
-                nome: data.pontoDestino.trim(),
+function normalizarDoacao(item: any): Doacao {
+    const pontoSelecionado: Ponto =
+        typeof item.pontoSelecionado === 'object' && item.pontoSelecionado !== null
+            ? item.pontoSelecionado
+            : {
+                id: item.pontoId ?? 0,
+                nome: item.pontoDestino ?? item.pontoSelecionado ?? 'Não informado',
                 endereco: '',
                 diasHorarios: '',
                 funcionamento: '',
-            },
-            criadoEm: new Date().toISOString(),
-        };
+            };
 
-        const historico = await carregarHistorico();
-        const novaLista = [novaDoacao, ...historico];
-        await AsyncStorage.setItem(STORAGE_KEY_LIST, JSON.stringify(novaLista));
-
-        return novaDoacao;
-    } catch (error) {
-        console.error('Erro ao criar doação:', error);
-        throw error;
-    }
+    return {
+        id: Number(item.id),
+        tipoItem: item.tipoItem,
+        qtdItem: Number(item.qtdItem ?? item.quantidade ?? 0),
+        pontoSelecionado,
+        criadoEm: item.criadoEm ?? item.createdAt ?? new Date().toISOString(),
+    };
 }
 
-export async function editarDoacao(id: number, data: DoacaoFormData): Promise<Doacao> {
-    try {
-        const historico = await carregarHistorico();
-        let doacaoAtualizada: Doacao | undefined;
+function normalizarListaResponse(
+    resposta: any,
+    pagina: number,
+    limite: number
+): ListarDoacoesResponse {
+    const listaBruta = Array.isArray(resposta)
+        ? resposta
+        : Array.isArray(resposta?.dados)
+            ? resposta.dados
+            : Array.isArray(resposta?.data)
+                ? resposta.data
+                : Array.isArray(resposta?.items)
+                    ? resposta.items
+                    : [];
 
-        const novaLista = historico.map((item) => {
-            if (item.id === id) {
-                doacaoAtualizada = {
-                    ...item,
-                    tipoItem: data.tipoItem,
-                    qtdItem: data.quantidade,
-                    pontoSelecionado: {
-                        ...(typeof item.pontoSelecionado === 'object' && item.pontoSelecionado !== null
-                            ? item.pontoSelecionado
-                            : { id: 0, endereco: '', diasHorarios: '', funcionamento: '' }),
-                        nome: data.pontoDestino.trim(),
-                    },
-                };
-                return doacaoAtualizada;
-            }
-            return item;
-        });
+    const dados = listaBruta.map(normalizarDoacao);
 
-        if (!doacaoAtualizada) {
-            throw new Error(`Doação com ID ${id} não encontrada para edição.`);
-        }
+    const total = Number(
+        resposta?.total ??
+        resposta?.totalRegistros ??
+        resposta?.count ??
+        dados.length
+    );
 
-        await AsyncStorage.setItem(STORAGE_KEY_LIST, JSON.stringify(novaLista));
-        return doacaoAtualizada;
-    } catch (error) {
-        console.error('Erro ao editar doação:', error);
-        throw error;
-    }
+    const paginaResposta = Number(resposta?.pagina ?? resposta?.page ?? pagina);
+    const limiteResposta = Number(resposta?.limite ?? resposta?.limit ?? limite);
+
+    const temProximaPagina =
+        typeof resposta?.temProximaPagina === 'boolean'
+            ? resposta.temProximaPagina
+            : typeof resposta?.hasNextPage === 'boolean'
+                ? resposta.hasNextPage
+                : dados.length === limiteResposta && paginaResposta * limiteResposta < total;
+
+    return {
+        dados,
+        total,
+        pagina: paginaResposta,
+        limite: limiteResposta,
+        temProximaPagina,
+    };
 }
 
-export async function excluirDoacao(id: number): Promise<void> {
-    try {
-        const historico = await carregarHistorico();
-        const novaLista = historico.filter((item) => item.id !== id);
-        await AsyncStorage.setItem(STORAGE_KEY_LIST, JSON.stringify(novaLista));
-    } catch (error) {
-        console.error('Erro ao excluir doação:', error);
-        throw error;
+export async function listarPagina({
+                                       pagina = 1,
+                                       limite = 10,
+                                       tipoItem,
+                                   }: ListarDoacoesParams = {}): Promise<ListarDoacoesResponse> {
+    const params = new URLSearchParams();
+
+    params.append('pagina', String(pagina));
+    params.append('limite', String(limite));
+
+    if (tipoItem && tipoItem.trim().length > 0) {
+        params.append('tipoItem', tipoItem.trim());
     }
+
+    const resposta = await api.get<any>(`${DOACOES_ENDPOINT}?${params.toString()}`);
+    return normalizarListaResponse(resposta, pagina, limite);
+}
+
+export async function carregarHistorico(): Promise<Doacao[]> {
+    const resposta = await listarPagina({
+        pagina: 1,
+        limite: 100,
+    });
+
+    return resposta.dados;
+}
+
+export async function getTotalHistorico(
+    historico?: Doacao[]
+): Promise<{ totalRegistros: number; totalItens: number }> {
+    const lista = historico ?? (await carregarHistorico());
+
+    return {
+        totalRegistros: lista.length,
+        totalItens: lista.reduce(
+            (acumulador, item) => acumulador + (Number(item.qtdItem) || 0),
+            0
+        ),
+    };
+}
+
+export async function obterDoacaoPorId(id: number | string): Promise<Doacao> {
+    const resposta = await api.get<any>(`${DOACOES_ENDPOINT}/${id}`);
+    return normalizarDoacao(resposta);
+}
+
+export async function buscarPorId(id: number | string): Promise<Doacao> {
+    return obterDoacaoPorId(id);
+}
+
+export async function criarDoacao(data: DoacaoFormData): Promise<Doacao> {
+    const payload = {
+        tipoItem: data.tipoItem,
+        quantidade: data.quantidade,
+        pontoDestino: data.pontoDestino.trim(),
+    };
+
+    const resposta = await api.post<any>(DOACOES_ENDPOINT, payload);
+    return normalizarDoacao(resposta);
+}
+
+export async function cadastrar(data: DoacaoFormData): Promise<Doacao> {
+    return criarDoacao(data);
+}
+
+export async function editarDoacao(
+    id: number | string,
+    data: DoacaoFormData
+): Promise<Doacao> {
+    const payload = {
+        tipoItem: data.tipoItem,
+        quantidade: data.quantidade,
+        pontoDestino: data.pontoDestino.trim(),
+    };
+
+    const resposta = await api.put<any>(`${DOACOES_ENDPOINT}/${id}`, payload);
+    return normalizarDoacao(resposta);
+}
+
+export async function editar(
+    id: number | string,
+    data: DoacaoFormData
+): Promise<Doacao> {
+    return editarDoacao(id, data);
+}
+
+export async function excluirDoacao(id: number | string): Promise<void> {
+    await api.del<void>(`${DOACOES_ENDPOINT}/${id}`);
+}
+
+export async function excluir(id: number | string): Promise<void> {
+    return excluirDoacao(id);
 }

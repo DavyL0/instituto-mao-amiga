@@ -6,6 +6,7 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TouchableOpacity,
     View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -13,17 +14,23 @@ import { DoacaoScreen } from '../components/FormularioDoacao';
 import { Doacao, RootStackParamList } from '../types/types';
 import { theme } from '../theme/theme';
 import { obterDoacaoPorId } from '../services/doacoesService';
+import { ApiError } from '../services/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TelaFormularioDoacao'>;
 
 const DoacaoFormScreen = ({ route, navigation }: Props) => {
     const doacaoId = route.params?.doacaoId;
     const [doacaoParaEditar, setDoacaoParaEditar] = useState<Doacao | null>(null);
-    const [loading, setLoading] = useState<boolean>(Boolean(doacaoId));
+    const [loading, setLoading] = useState<boolean>(doacaoId != null);
+    const [erro, setErro] = useState('');
+    const [tentativa, setTentativa] = useState(0);
 
     useEffect(() => {
         let isMounted = true;
-        if (doacaoId) {
+        if (doacaoId != null) {
+            setLoading(true);
+            setErro('');
+            setDoacaoParaEditar(null);
             obterDoacaoPorId(doacaoId)
                 .then((item) => {
                     if (isMounted) {
@@ -31,8 +38,11 @@ const DoacaoFormScreen = ({ route, navigation }: Props) => {
                         setLoading(false);
                     }
                 })
-                .catch(() => {
+                .catch((error) => {
                     if (isMounted) {
+                        setErro(error instanceof ApiError && error.status === 404
+                            ? 'Doação não encontrada.'
+                            : 'Não foi possível carregar a doação.');
                         setLoading(false);
                     }
                 });
@@ -40,13 +50,13 @@ const DoacaoFormScreen = ({ route, navigation }: Props) => {
         return () => {
             isMounted = false;
         };
-    }, [doacaoId]);
+    }, [doacaoId, tentativa]);
 
     const handleSuccess = () => {
-        if (doacaoId && navigation.canGoBack()) {
+        if (doacaoId != null) {
             navigation.goBack();
         } else {
-            navigation.navigate('TelaDoacoes');
+            navigation.popTo('TelaDoacoes');
         }
     };
 
@@ -59,7 +69,18 @@ const DoacaoFormScreen = ({ route, navigation }: Props) => {
         );
     }
 
-    const isEditing = Boolean(doacaoId);
+    const isEditing = doacaoId != null;
+
+    if (isEditing && !doacaoParaEditar) {
+        return (
+            <View style={styles.centerContainer}>
+                <Text style={styles.loadingText}>{erro || 'Doação não encontrada.'}</Text>
+                <TouchableOpacity onPress={() => setTentativa((valor) => valor + 1)}>
+                    <Text style={styles.loadingText}>Tentar novamente</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
 
     return (
         <KeyboardAvoidingView
