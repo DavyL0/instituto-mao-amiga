@@ -5,6 +5,7 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 import TelaListaPontos from './src/screens/TelaListaPontos';
+import TelaMeusPontos from './src/screens/TelaMeusPontos';
 import TelaDetalhePonto from './src/screens/TelaDetalhePonto';
 import TelaFormularioPonto from './src/screens/TelaFormularioPonto';
 import TelaFormularioDoacao from './src/screens/TelaFormularioDoacao';
@@ -38,6 +39,11 @@ export default function App() {
               name="TelaDetalhePonto"
               component={TelaDetalhePonto}
               options={{title: 'Detalhes do Ponto'}}
+          />
+          <Stack.Screen
+              name="TelaMeusPontos"
+              component={TelaMeusPontos}
+              options={{title: 'Meus pontos'}}
           />
           <Stack.Screen
               name="TelaFormularioPonto"
